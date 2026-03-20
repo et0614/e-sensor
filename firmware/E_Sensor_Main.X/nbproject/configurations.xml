@@ -1,0 +1,549 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configurationDescriptor version="65">
+  <logicalFolder name="root" displayName="root" projectFiles="true">
+    <logicalFolder name="HeaderFiles"
+                   displayName="Header Files"
+                   projectFiles="true">
+      <logicalFolder name="f2" displayName="Drivers" projectFiles="true">
+        <itemPath>i2c_master.h</itemPath>
+      </logicalFolder>
+      <logicalFolder name="MCC Generated Files"
+                     displayName="MCC Generated Files"
+                     projectFiles="true">
+        <logicalFolder name="i2c_host" displayName="i2c_host" projectFiles="true">
+          <itemPath>mcc_generated_files/i2c_host/i2c_host_event_types.h</itemPath>
+          <itemPath>mcc_generated_files/i2c_host/i2c_host_interface.h</itemPath>
+          <itemPath>mcc_generated_files/i2c_host/i2c_host_types.h</itemPath>
+          <itemPath>mcc_generated_files/i2c_host/twi0.h</itemPath>
+        </logicalFolder>
+        <logicalFolder name="system" displayName="system" projectFiles="true">
+          <logicalFolder name="utils" displayName="utils" projectFiles="true">
+            <logicalFolder name="assembler" displayName="assembler" projectFiles="true">
+              <itemPath>mcc_generated_files/system/utils/assembler/gas.h</itemPath>
+              <itemPath>mcc_generated_files/system/utils/assembler/iar.h</itemPath>
+            </logicalFolder>
+            <itemPath>mcc_generated_files/system/utils/interrupt_avr8.h</itemPath>
+            <itemPath>mcc_generated_files/system/utils/assembler.h</itemPath>
+            <itemPath>mcc_generated_files/system/utils/compiler.h</itemPath>
+            <itemPath>mcc_generated_files/system/utils/atomic.h</itemPath>
+            <itemPath>mcc_generated_files/system/utils/utils_assert.h</itemPath>
+            <itemPath>mcc_generated_files/system/utils/utils.h</itemPath>
+          </logicalFolder>
+          <itemPath>mcc_generated_files/system/interrupt.h</itemPath>
+          <itemPath>mcc_generated_files/system/clock.h</itemPath>
+          <itemPath>mcc_generated_files/system/protected_io.h</itemPath>
+          <itemPath>mcc_generated_files/system/config_bits.h</itemPath>
+          <itemPath>mcc_generated_files/system/ccp.h</itemPath>
+          <itemPath>mcc_generated_files/system/system.h</itemPath>
+          <itemPath>mcc_generated_files/system/port.h</itemPath>
+          <itemPath>mcc_generated_files/system/pins.h</itemPath>
+        </logicalFolder>
+        <logicalFolder name="timer" displayName="timer" projectFiles="true">
+          <itemPath>mcc_generated_files/timer/tca0_deprecated.h</itemPath>
+          <itemPath>mcc_generated_files/timer/tca0.h</itemPath>
+          <itemPath>mcc_generated_files/timer/rtc.h</itemPath>
+          <itemPath>mcc_generated_files/timer/delay.h</itemPath>
+        </logicalFolder>
+      </logicalFolder>
+      <logicalFolder name="f1" displayName="Sensors" projectFiles="true">
+        <itemPath>sensor_data.h</itemPath>
+        <itemPath>stcc4.h</itemPath>
+        <itemPath>opt3001.h</itemPath>
+        <itemPath>velocity_sensor.h</itemPath>
+      </logicalFolder>
+      <logicalFolder name="tinyusb" displayName="tinyusb" projectFiles="true">
+        <logicalFolder name="class" displayName="class" projectFiles="true">
+          <logicalFolder name="audio" displayName="audio" projectFiles="true">
+            <itemPath>tinyusb/class/audio/audio.h</itemPath>
+            <itemPath>tinyusb/class/audio/audio_device.h</itemPath>
+          </logicalFolder>
+          <logicalFolder name="bth" displayName="bth" projectFiles="true">
+            <itemPath>tinyusb/class/bth/bth_device.h</itemPath>
+          </logicalFolder>
+          <logicalFolder name="cdc" displayName="cdc" projectFiles="true">
+            <logicalFolder name="serial" displayName="serial" projectFiles="true">
+              <itemPath>tinyusb/class/cdc/serial/ch34x.h</itemPath>
+              <itemPath>tinyusb/class/cdc/serial/cp210x.h</itemPath>
+              <itemPath>tinyusb/class/cdc/serial/ftdi_sio.h</itemPath>
+              <itemPath>tinyusb/class/cdc/serial/pl2303.h</itemPath>
+            </logicalFolder>
+            <itemPath>tinyusb/class/cdc/cdc.h</itemPath>
+            <itemPath>tinyusb/class/cdc/cdc_device.h</itemPath>
+            <itemPath>tinyusb/class/cdc/cdc_host.h</itemPath>
+            <itemPath>tinyusb/class/cdc/cdc_rndis.h</itemPath>
+            <itemPath>tinyusb/class/cdc/cdc_rndis_host.h</itemPath>
+          </logicalFolder>
+          <logicalFolder name="dfu" displayName="dfu" projectFiles="true">
+            <itemPath>tinyusb/class/dfu/dfu.h</itemPath>
+            <itemPath>tinyusb/class/dfu/dfu_device.h</itemPath>
+            <itemPath>tinyusb/class/dfu/dfu_rt_device.h</itemPath>
+          </logicalFolder>
+          <logicalFolder name="hid" displayName="hid" projectFiles="true">
+            <itemPath>tinyusb/class/hid/hid.h</itemPath>
+            <itemPath>tinyusb/class/hid/hid_device.h</itemPath>
+            <itemPath>tinyusb/class/hid/hid_host.h</itemPath>
+          </logicalFolder>
+          <logicalFolder name="midi" displayName="midi" projectFiles="true">
+            <itemPath>tinyusb/class/midi/midi.h</itemPath>
+            <itemPath>tinyusb/class/midi/midi_device.h</itemPath>
+            <itemPath>tinyusb/class/midi/midi_host.h</itemPath>
+          </logicalFolder>
+          <logicalFolder name="msc" displayName="msc" projectFiles="true">
+            <itemPath>tinyusb/class/msc/msc.h</itemPath>
+            <itemPath>tinyusb/class/msc/msc_device.h</itemPath>
+            <itemPath>tinyusb/class/msc/msc_host.h</itemPath>
+          </logicalFolder>
+          <logicalFolder name="mtp" displayName="mtp" projectFiles="true">
+            <itemPath>tinyusb/class/mtp/mtp.h</itemPath>
+            <itemPath>tinyusb/class/mtp/mtp_device.h</itemPath>
+          </logicalFolder>
+          <logicalFolder name="net" displayName="net" projectFiles="true">
+            <itemPath>tinyusb/class/net/ncm.h</itemPath>
+            <itemPath>tinyusb/class/net/net_device.h</itemPath>
+          </logicalFolder>
+          <logicalFolder name="usbtmc" displayName="usbtmc" projectFiles="true">
+            <itemPath>tinyusb/class/usbtmc/usbtmc.h</itemPath>
+            <itemPath>tinyusb/class/usbtmc/usbtmc_device.h</itemPath>
+          </logicalFolder>
+          <logicalFolder name="vendor" displayName="vendor" projectFiles="true">
+            <itemPath>tinyusb/class/vendor/vendor_device.h</itemPath>
+            <itemPath>tinyusb/class/vendor/vendor_host.h</itemPath>
+          </logicalFolder>
+          <logicalFolder name="video" displayName="video" projectFiles="true">
+            <itemPath>tinyusb/class/video/video.h</itemPath>
+            <itemPath>tinyusb/class/video/video_device.h</itemPath>
+          </logicalFolder>
+        </logicalFolder>
+        <logicalFolder name="common" displayName="common" projectFiles="true">
+          <itemPath>tinyusb/common/tusb_common.h</itemPath>
+          <itemPath>tinyusb/common/tusb_compiler.h</itemPath>
+          <itemPath>tinyusb/common/tusb_debug.h</itemPath>
+          <itemPath>tinyusb/common/tusb_fifo.h</itemPath>
+          <itemPath>tinyusb/common/tusb_mcu.h</itemPath>
+          <itemPath>tinyusb/common/tusb_private.h</itemPath>
+          <itemPath>tinyusb/common/tusb_types.h</itemPath>
+          <itemPath>tinyusb/common/tusb_verify.h</itemPath>
+        </logicalFolder>
+        <logicalFolder name="device" displayName="device" projectFiles="true">
+          <itemPath>tinyusb/device/dcd.h</itemPath>
+          <itemPath>tinyusb/device/usbd.h</itemPath>
+          <itemPath>tinyusb/device/usbd_pvt.h</itemPath>
+        </logicalFolder>
+        <logicalFolder name="host" displayName="host" projectFiles="true">
+          <itemPath>tinyusb/host/hcd.h</itemPath>
+          <itemPath>tinyusb/host/hub.h</itemPath>
+          <itemPath>tinyusb/host/usbh.h</itemPath>
+          <itemPath>tinyusb/host/usbh_pvt.h</itemPath>
+        </logicalFolder>
+        <logicalFolder name="osal" displayName="osal" projectFiles="true">
+          <itemPath>tinyusb/osal/osal.h</itemPath>
+          <itemPath>tinyusb/osal/osal_freertos.h</itemPath>
+          <itemPath>tinyusb/osal/osal_mynewt.h</itemPath>
+          <itemPath>tinyusb/osal/osal_none.h</itemPath>
+          <itemPath>tinyusb/osal/osal_pico.h</itemPath>
+          <itemPath>tinyusb/osal/osal_rtthread.h</itemPath>
+          <itemPath>tinyusb/osal/osal_rtx4.h</itemPath>
+          <itemPath>tinyusb/osal/osal_zephyr.h</itemPath>
+        </logicalFolder>
+        <logicalFolder name="typec" displayName="typec" projectFiles="true">
+          <itemPath>tinyusb/typec/pd_types.h</itemPath>
+          <itemPath>tinyusb/typec/tcd.h</itemPath>
+          <itemPath>tinyusb/typec/usbc.h</itemPath>
+        </logicalFolder>
+        <itemPath>tinyusb/tusb.h</itemPath>
+        <itemPath>tinyusb/tusb_option.h</itemPath>
+      </logicalFolder>
+      <logicalFolder name="f3" displayName="Utils" projectFiles="true">
+        <itemPath>crc.h</itemPath>
+        <itemPath>smAverage.h</itemPath>
+        <itemPath>serial.h</itemPath>
+      </logicalFolder>
+      <itemPath>tinyusb/tusb_config.h</itemPath>
+      <itemPath>midi_app.h</itemPath>
+    </logicalFolder>
+    <logicalFolder name="ExternalFiles"
+                   displayName="Important Files"
+                   projectFiles="true">
+      <itemPath>Makefile</itemPath>
+      <itemPath>E_Sensor.mc3</itemPath>
+    </logicalFolder>
+    <logicalFolder name="LinkerScript"
+                   displayName="Linker Files"
+                   projectFiles="true">
+    </logicalFolder>
+    <logicalFolder name="SourceFiles"
+                   displayName="Source Files"
+                   projectFiles="true">
+      <logicalFolder name="f2" displayName="Drivers" projectFiles="true">
+        <itemPath>i2c_master.c</itemPath>
+      </logicalFolder>
+      <logicalFolder name="MCC Generated Files"
+                     displayName="MCC Generated Files"
+                     projectFiles="true">
+        <logicalFolder name="i2c_host" displayName="i2c_host" projectFiles="true">
+          <logicalFolder name="src" displayName="src" projectFiles="true">
+            <itemPath>mcc_generated_files/i2c_host/src/twi0.c</itemPath>
+          </logicalFolder>
+        </logicalFolder>
+        <logicalFolder name="system" displayName="system" projectFiles="true">
+          <logicalFolder name="src" displayName="src" projectFiles="true">
+            <itemPath>mcc_generated_files/system/src/interrupt.c</itemPath>
+            <itemPath>mcc_generated_files/system/src/clock.c</itemPath>
+            <itemPath>mcc_generated_files/system/src/config_bits.c</itemPath>
+            <itemPath>mcc_generated_files/system/src/protected_io.S</itemPath>
+            <itemPath>mcc_generated_files/system/src/system.c</itemPath>
+            <itemPath>mcc_generated_files/system/src/pins.c</itemPath>
+          </logicalFolder>
+        </logicalFolder>
+        <logicalFolder name="timer" displayName="timer" projectFiles="true">
+          <logicalFolder name="src" displayName="src" projectFiles="true">
+            <itemPath>mcc_generated_files/timer/src/tca0.c</itemPath>
+            <itemPath>mcc_generated_files/timer/src/rtc.c</itemPath>
+            <itemPath>mcc_generated_files/timer/src/delay.c</itemPath>
+          </logicalFolder>
+        </logicalFolder>
+      </logicalFolder>
+      <logicalFolder name="f1" displayName="Sensors" projectFiles="true">
+        <itemPath>stcc4.c</itemPath>
+        <itemPath>opt3001.c</itemPath>
+        <itemPath>velocity_sensor.c</itemPath>
+      </logicalFolder>
+      <logicalFolder name="tinyusb" displayName="tinyusb" projectFiles="true">
+        <logicalFolder name="class" displayName="class" projectFiles="true">
+          <logicalFolder name="audio" displayName="audio" projectFiles="true">
+            <itemPath>tinyusb/class/audio/audio_device.c</itemPath>
+          </logicalFolder>
+          <logicalFolder name="bth" displayName="bth" projectFiles="true">
+            <itemPath>tinyusb/class/bth/bth_device.c</itemPath>
+          </logicalFolder>
+          <logicalFolder name="cdc" displayName="cdc" projectFiles="true">
+            <logicalFolder name="serial" displayName="serial" projectFiles="true">
+            </logicalFolder>
+            <itemPath>tinyusb/class/cdc/cdc_device.c</itemPath>
+            <itemPath>tinyusb/class/cdc/cdc_host.c</itemPath>
+            <itemPath>tinyusb/class/cdc/cdc_rndis_host.c</itemPath>
+          </logicalFolder>
+          <logicalFolder name="dfu" displayName="dfu" projectFiles="true">
+            <itemPath>tinyusb/class/dfu/dfu_device.c</itemPath>
+            <itemPath>tinyusb/class/dfu/dfu_rt_device.c</itemPath>
+          </logicalFolder>
+          <logicalFolder name="hid" displayName="hid" projectFiles="true">
+            <itemPath>tinyusb/class/hid/hid_device.c</itemPath>
+            <itemPath>tinyusb/class/hid/hid_host.c</itemPath>
+          </logicalFolder>
+          <logicalFolder name="midi" displayName="midi" projectFiles="true">
+            <itemPath>tinyusb/class/midi/midi_device.c</itemPath>
+            <itemPath>tinyusb/class/midi/midi_host.c</itemPath>
+          </logicalFolder>
+          <logicalFolder name="msc" displayName="msc" projectFiles="true">
+            <itemPath>tinyusb/class/msc/msc_device.c</itemPath>
+            <itemPath>tinyusb/class/msc/msc_host.c</itemPath>
+          </logicalFolder>
+          <logicalFolder name="mtp" displayName="mtp" projectFiles="true">
+            <itemPath>tinyusb/class/mtp/mtp_device.c</itemPath>
+          </logicalFolder>
+          <logicalFolder name="net" displayName="net" projectFiles="true">
+            <itemPath>tinyusb/class/net/ecm_rndis_device.c</itemPath>
+            <itemPath>tinyusb/class/net/ncm_device.c</itemPath>
+          </logicalFolder>
+          <logicalFolder name="usbtmc" displayName="usbtmc" projectFiles="true">
+            <itemPath>tinyusb/class/usbtmc/usbtmc_device.c</itemPath>
+          </logicalFolder>
+          <logicalFolder name="vendor" displayName="vendor" projectFiles="true">
+            <itemPath>tinyusb/class/vendor/vendor_device.c</itemPath>
+            <itemPath>tinyusb/class/vendor/vendor_host.c</itemPath>
+          </logicalFolder>
+          <logicalFolder name="video" displayName="video" projectFiles="true">
+            <itemPath>tinyusb/class/video/video_device.c</itemPath>
+          </logicalFolder>
+        </logicalFolder>
+        <logicalFolder name="common" displayName="common" projectFiles="true">
+          <itemPath>tinyusb/common/tusb_fifo.c</itemPath>
+        </logicalFolder>
+        <logicalFolder name="device" displayName="device" projectFiles="true">
+          <itemPath>tinyusb/device/usbd.c</itemPath>
+          <itemPath>tinyusb/device/usbd_control.c</itemPath>
+        </logicalFolder>
+        <logicalFolder name="host" displayName="host" projectFiles="true">
+          <itemPath>tinyusb/host/hub.c</itemPath>
+          <itemPath>tinyusb/host/usbh.c</itemPath>
+        </logicalFolder>
+        <logicalFolder name="osal" displayName="osal" projectFiles="true">
+        </logicalFolder>
+        <logicalFolder name="typec" displayName="typec" projectFiles="true">
+          <itemPath>tinyusb/typec/usbc.c</itemPath>
+        </logicalFolder>
+        <itemPath>tinyusb/tusb.c</itemPath>
+        <itemPath>tinyusb/usb_descriptors.c</itemPath>
+      </logicalFolder>
+      <itemPath>main.c</itemPath>
+      <itemPath>dcd_mchp_g2.c</itemPath>
+      <itemPath>midi_app.c</itemPath>
+    </logicalFolder>
+  </logicalFolder>
+  <sourceRootList>
+    <Elem>.</Elem>
+  </sourceRootList>
+  <projectmakefile>Makefile</projectmakefile>
+  <confs>
+    <conf name="default" type="2">
+      <toolsSet>
+        <developmentServer>localhost</developmentServer>
+        <targetDevice>AVR64DU32</targetDevice>
+        <targetHeader></targetHeader>
+        <targetPluginBoard></targetPluginBoard>
+        <platformTool>AtmelIceTool</platformTool>
+        <languageToolchain>XC8</languageToolchain>
+        <languageToolchainVersion>3.10</languageToolchainVersion>
+        <platform>3</platform>
+      </toolsSet>
+      <packs>
+        <pack name="AVR-Dx_DFP" vendor="Microchip" version="2.7.321"/>
+      </packs>
+      <ScriptingSettings>
+      </ScriptingSettings>
+      <compileType>
+        <linkerTool>
+          <linkerLibItems>
+          </linkerLibItems>
+        </linkerTool>
+        <archiverTool>
+        </archiverTool>
+        <loading>
+          <useAlternateLoadableFile>false</useAlternateLoadableFile>
+          <parseOnProdLoad>false</parseOnProdLoad>
+          <alternateLoadableFile></alternateLoadableFile>
+        </loading>
+        <subordinates>
+        </subordinates>
+      </compileType>
+      <makeCustomizationType>
+        <makeCustomizationPreStepEnabled>false</makeCustomizationPreStepEnabled>
+        <makeUseCleanTarget>false</makeUseCleanTarget>
+        <makeCustomizationPreStep></makeCustomizationPreStep>
+        <makeCustomizationPostStepEnabled>false</makeCustomizationPostStepEnabled>
+        <makeCustomizationPostStep></makeCustomizationPostStep>
+        <makeCustomizationPutChecksumInUserID>false</makeCustomizationPutChecksumInUserID>
+        <makeCustomizationEnableLongLines>false</makeCustomizationEnableLongLines>
+        <makeCustomizationNormalizeHexFile>false</makeCustomizationNormalizeHexFile>
+      </makeCustomizationType>
+      <AtmelIceTool>
+        <property key="AutoSelectMemRanges" value="auto"/>
+        <property key="communication.activationmode" value="nohv"/>
+        <property key="communication.interface" value="updi"/>
+        <property key="communication.speed" value="0.500"/>
+        <property key="debugoptions.debug-startup" value="Use system settings"/>
+        <property key="debugoptions.reset-behaviour" value="Use system settings"/>
+        <property key="debugoptions.useswbreakpoints" value="false"/>
+        <property key="event.recorder.debugger.behavior" value="Running"/>
+        <property key="event.recorder.enabled" value="false"/>
+        <property key="event.recorder.scvd.files" value=""/>
+        <property key="firmware.path"
+                  value="Press to browse for a specific firmware version"/>
+        <property key="firmware.toolpack"
+                  value="Press to select which tool pack to use"/>
+        <property key="firmware.update.action" value="firmware.update.use.latest"/>
+        <property key="freeze.timers" value="false"/>
+        <property key="lastid" value=""/>
+        <property key="memories.aux" value="false"/>
+        <property key="memories.bootflash" value="true"/>
+        <property key="memories.configurationmemory" value="true"/>
+        <property key="memories.configurationmemory2" value="true"/>
+        <property key="memories.dataflash" value="true"/>
+        <property key="memories.eeprom" value="true"/>
+        <property key="memories.exclude.configurationmemory" value="true"/>
+        <property key="memories.flashdata" value="true"/>
+        <property key="memories.id" value="true"/>
+        <property key="memories.instruction.ram.ranges"
+                  value="${memories.instruction.ram.ranges}"/>
+        <property key="memories.programmemory" value="true"/>
+        <property key="memories.programmemory.ranges" value="0-7fff"/>
+        <property key="poweroptions.powerenable" value="false"/>
+        <property key="programmerToGoFilePath"
+                  value="C:/microchip/MIDI_Tester.X/debug/default/MIDI_Tester_ptg"/>
+        <property key="programoptions.eraseb4program" value="true"/>
+        <property key="programoptions.preservedataflash" value="false"/>
+        <property key="programoptions.preservedataflash.ranges"
+                  value="${memories.dataflash.default}"/>
+        <property key="programoptions.preserveeeprom" value="false"/>
+        <property key="programoptions.preserveeeprom.ranges" value="1400-14ff"/>
+        <property key="programoptions.preserveprogram.ranges" value=""/>
+        <property key="programoptions.preserveprogramrange" value="false"/>
+        <property key="programoptions.preserveuserid" value="false"/>
+        <property key="programoptions.programuserotp" value="false"/>
+        <property key="toolpack.updateoptions"
+                  value="toolpack.updateoptions.uselatestoolpack"/>
+        <property key="toolpack.updateoptions.packversion"
+                  value="Press to select which tool pack to use"/>
+        <property key="voltagevalue" value=""/>
+      </AtmelIceTool>
+      <HI-TECH-COMP>
+        <property key="additional-warnings" value="true"/>
+        <property key="asmlist" value="true"/>
+        <property key="call-prologues" value="false"/>
+        <property key="default-bitfield-type" value="true"/>
+        <property key="default-char-type" value="true"/>
+        <property key="define-macros" value=""/>
+        <property key="disable-optimizations" value="false"/>
+        <property key="extra-include-directories"
+                  value="tinyusb;mcc_generated_files/usb;mcc_generated_files/usb/usb_common;mcc_generated_files/usb/usb_peripheral;mcc_generated_files/usb/usb_vendor;mcc_generated_files/usb/usb_hid;mcc_generated_files/usb/usb_cdc;mcc_generated_files/usb/usb_cdc/circular_buffer"/>
+        <property key="favor-optimization-for" value="-speed,+space"/>
+        <property key="garbage-collect-data" value="true"/>
+        <property key="garbage-collect-functions" value="true"/>
+        <property key="identifier-length" value="255"/>
+        <property key="local-generation" value="false"/>
+        <property key="operation-mode" value="free"/>
+        <property key="opt-xc8-compiler-strict_ansi" value="false"/>
+        <property key="optimization-assembler" value="true"/>
+        <property key="optimization-assembler-files" value="true"/>
+        <property key="optimization-debug" value="false"/>
+        <property key="optimization-invariant-enable" value="false"/>
+        <property key="optimization-invariant-value" value="16"/>
+        <property key="optimization-level" value="-O1"/>
+        <property key="optimization-speed" value="false"/>
+        <property key="optimization-stable-enable" value="false"/>
+        <property key="preprocess-assembler" value="true"/>
+        <property key="short-enums" value="true"/>
+        <property key="tentative-definitions" value="-fno-common"/>
+        <property key="undefine-macros" value=""/>
+        <property key="use-cci" value="false"/>
+        <property key="use-iar" value="false"/>
+        <property key="verbose" value="false"/>
+        <property key="warning-level" value="-3"/>
+        <property key="what-to-do" value="ignore"/>
+      </HI-TECH-COMP>
+      <HI-TECH-LINK>
+        <property key="additional-options-checksum" value=""/>
+        <property key="additional-options-checksumAVR" value=""/>
+        <property key="additional-options-checksumAVR2" value="0"/>
+        <property key="additional-options-code-offset" value=""/>
+        <property key="additional-options-command-line" value=""/>
+        <property key="additional-options-errata" value=""/>
+        <property key="additional-options-extend-address" value="false"/>
+        <property key="additional-options-fillAVR2" value="0"/>
+        <property key="additional-options-trace-type" value=""/>
+        <property key="additional-options-use-response-files" value="false"/>
+        <property key="backup-reset-condition-flags" value="false"/>
+        <property key="calibrate-oscillator" value="false"/>
+        <property key="calibrate-oscillator-value" value="0x3400"/>
+        <property key="checksum-flash-options-addressce" value=""/>
+        <property key="checksum-flash-options-addresscs" value=""/>
+        <property key="checksum-flash-options-algorithmc"
+                  value="Select checksum algorithm"/>
+        <property key="checksum-flash-options-destc" value=""/>
+        <property key="checksum-flash-options-offsetc" value="0xFFFF"/>
+        <property key="checksum-flash-options-widthc" value="2"/>
+        <property key="clear-bss" value="true"/>
+        <property key="code-model-external" value="wordwrite"/>
+        <property key="code-model-rom" value=""/>
+        <property key="create-html-files" value="false"/>
+        <property key="data-model-ram" value=""/>
+        <property key="data-model-size-of-double" value="24"/>
+        <property key="data-model-size-of-double-gcc" value="no-short-double"/>
+        <property key="data-model-size-of-float" value="24"/>
+        <property key="data-model-size-of-float-gcc" value="no-short-float"/>
+        <property key="display-class-usage" value="false"/>
+        <property key="display-hex-usage" value="false"/>
+        <property key="display-overall-usage" value="true"/>
+        <property key="display-psect-usage" value="false"/>
+        <property key="extra-lib-directories" value=""/>
+        <property key="fill-flash-options-addr" value=""/>
+        <property key="fill-flash-options-addrfe" value=""/>
+        <property key="fill-flash-options-addrfs" value=""/>
+        <property key="fill-flash-options-const" value=""/>
+        <property key="fill-flash-options-constf" value=""/>
+        <property key="fill-flash-options-how" value="0"/>
+        <property key="fill-flash-options-inc-const" value="1"/>
+        <property key="fill-flash-options-increment" value=""/>
+        <property key="fill-flash-options-seq" value=""/>
+        <property key="fill-flash-options-what" value="0"/>
+        <property key="fill-flash-options-wwidthf" value="2"/>
+        <property key="format-hex-file-for-download" value="false"/>
+        <property key="initialize-data" value="true"/>
+        <property key="input-libraries" value="libm"/>
+        <property key="keep-generated-startup.as" value="false"/>
+        <property key="link-in-c-library" value="true"/>
+        <property key="link-in-c-library-gcc" value=""/>
+        <property key="link-in-peripheral-library" value="false"/>
+        <property key="managed-stack" value="false"/>
+        <property key="opt-xc8-linker-file" value="false"/>
+        <property key="opt-xc8-linker-link_startup" value="false"/>
+        <property key="opt-xc8-linker-serial" value=""/>
+        <property key="program-the-device-with-default-config-words" value="false"/>
+        <property key="remove-unused-sections" value="true"/>
+      </HI-TECH-LINK>
+      <Tool>
+        <property key="AutoSelectMemRanges" value="auto"/>
+        <property key="communication.activationmode" value="nohv"/>
+        <property key="communication.interface" value="updi"/>
+        <property key="communication.speed" value="0.500"/>
+        <property key="debugoptions.debug-startup" value="Use system settings"/>
+        <property key="debugoptions.reset-behaviour" value="Use system settings"/>
+        <property key="debugoptions.useswbreakpoints" value="false"/>
+        <property key="event.recorder.debugger.behavior" value="Running"/>
+        <property key="event.recorder.enabled" value="false"/>
+        <property key="event.recorder.scvd.files" value=""/>
+        <property key="firmware.path"
+                  value="Press to browse for a specific firmware version"/>
+        <property key="firmware.toolpack"
+                  value="Press to select which tool pack to use"/>
+        <property key="firmware.update.action" value="firmware.update.use.latest"/>
+        <property key="freeze.timers" value="false"/>
+        <property key="lastid" value=""/>
+        <property key="memories.aux" value="false"/>
+        <property key="memories.bootflash" value="true"/>
+        <property key="memories.configurationmemory" value="true"/>
+        <property key="memories.configurationmemory2" value="true"/>
+        <property key="memories.dataflash" value="true"/>
+        <property key="memories.eeprom" value="true"/>
+        <property key="memories.exclude.configurationmemory" value="true"/>
+        <property key="memories.flashdata" value="true"/>
+        <property key="memories.id" value="true"/>
+        <property key="memories.instruction.ram.ranges"
+                  value="${memories.instruction.ram.ranges}"/>
+        <property key="memories.programmemory" value="true"/>
+        <property key="memories.programmemory.ranges" value="0-7fff"/>
+        <property key="poweroptions.powerenable" value="false"/>
+        <property key="programmerToGoFilePath"
+                  value="C:/microchip/MIDI_Tester.X/debug/default/MIDI_Tester_ptg"/>
+        <property key="programoptions.eraseb4program" value="true"/>
+        <property key="programoptions.preservedataflash" value="false"/>
+        <property key="programoptions.preservedataflash.ranges"
+                  value="${memories.dataflash.default}"/>
+        <property key="programoptions.preserveeeprom" value="false"/>
+        <property key="programoptions.preserveeeprom.ranges" value="1400-14ff"/>
+        <property key="programoptions.preserveprogram.ranges" value=""/>
+        <property key="programoptions.preserveprogramrange" value="false"/>
+        <property key="programoptions.preserveuserid" value="false"/>
+        <property key="programoptions.programuserotp" value="false"/>
+        <property key="toolpack.updateoptions"
+                  value="toolpack.updateoptions.uselatestoolpack"/>
+        <property key="toolpack.updateoptions.packversion"
+                  value="Press to select which tool pack to use"/>
+        <property key="voltagevalue" value=""/>
+      </Tool>
+      <XC8-CO>
+        <property key="coverage-enable" value=""/>
+        <property key="stack-guidance" value="false"/>
+      </XC8-CO>
+      <XC8-config-global>
+        <property key="advanced-elf" value="true"/>
+        <property key="constdata-progmem" value="true"/>
+        <property key="gcc-opt-driver-new" value="true"/>
+        <property key="gcc-opt-std" value="-std=c99"/>
+        <property key="gcc-output-file-format" value="dwarf-3"/>
+        <property key="mapped-progmem" value="true"/>
+        <property key="omit-pack-options" value="false"/>
+        <property key="omit-pack-options-new" value="1"/>
+        <property key="output-file-format" value="-mcof,+elf"/>
+        <property key="smart-io-format" value=""/>
+        <property key="stack-size-high" value="auto"/>
+        <property key="stack-size-low" value="auto"/>
+        <property key="stack-size-main" value="auto"/>
+        <property key="stack-type" value="compiled"/>
+        <property key="user-pack-device-support" value=""/>
+        <property key="wpo-lto" value="false"/>
+      </XC8-config-global>
+    </conf>
+  </confs>
+</configurationDescriptor>

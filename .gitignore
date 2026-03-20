@@ -1,0 +1,26 @@
+##### MPLAB X 特定の除外設定 #####
+# ビルド生成物
+**/build/
+**/dist/
+**/debug/
+**/queuelogs/
+**/.generated_files/
+
+# ユーザー固有の設定
+**/nbproject/private/
+
+# 自動生成されるMakefile
+**/nbproject/Makefile-*
+**/nbproject/Package-*
+
+##### Python (software/) 用の除外設定 #####
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
+
+##### ハードウェア/一般 用の除外設定 #####
+*.bak
+*.s#*
+*.lck
+*.log
+*.log.inx
