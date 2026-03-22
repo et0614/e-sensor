@@ -1,6 +1,7 @@
 #include "mcc_generated_files/system/system.h"
 #include "mcc_generated_files/timer/tca0.h"
 #include "mcc_generated_files/system/pins.h"
+
 #include <avr/interrupt.h>
 
 #include "tinyusb/tusb.h"
@@ -9,8 +10,11 @@
 #include "velocity_sensor.h"
 #include "stcc4.h"
 
+#include <util/atomic.h>
+
 volatile uint32_t system_millis = 0;
 volatile uint32_t sec_timer = 0;
+volatile int32_t co2_pfm_timer = 0;
 
 // 1msecごとのコールバック関数
 void msecHandler(void) 
@@ -18,11 +22,16 @@ void msecHandler(void)
     extern volatile uint32_t system_millis;
     system_millis++;
     sec_timer++;
+    if(0 <= co2_pfm_timer) co2_pfm_timer++;
 }
 
 // TinyUSBが参照する時間取得関数をオーバーライド
 uint32_t tusb_time_millis_api(void) {
-    return system_millis;
+    uint32_t now;
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+        now = system_millis;
+    }
+    return now;
 }
 
 void setup_usb(void) {
@@ -48,7 +57,7 @@ int main(void)
     OPT3001_Initialize();
     VELS_start();
     STCC4_exitSleep();
-    STCC4_startContinuousMeasurement(); //連続計測再開
+    STCC4_performConditioning(); // CO2センサの初期調整処理（同期的に22秒かかる）
     
     MIDI_APP_Initialize();
     
@@ -67,6 +76,10 @@ int main(void)
     {
         tud_task();         // USBスタック
         MIDI_APP_Tasks();   // MIDIアプリ処理
+        
+        // 初期調整（約22sec）が終わり次第CO2センサ起動
+        if(23000 < co2_pfm_timer && STCC4_startContinuousMeasurement())
+                co2_pfm_timer = -1;
         
         // 1secタイマ
         if(1000 < sec_timer)

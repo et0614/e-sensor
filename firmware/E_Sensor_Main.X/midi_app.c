@@ -3,6 +3,8 @@
 #include "crc.h"
 #include "tinyusb/tusb.h"
 
+#include <util/atomic.h>
+
 #include "opt3001.h"
 #include "stcc4.h"
 #include "velocity_sensor.h"
@@ -42,16 +44,28 @@
 #define VERSION_MINOR (0)
 #define VERSION_REVISION (0)
 
+// 計測時間間隔 [msec]
+#define MEAS_CO2_SPAN (1000)
+#define MEAS_ILL_SPAN (800)
+#define MEAS_VEL_SPAN (200)
+
 #define SYSEX_BUF_SIZE 64
 static uint8_t rx_buf[SYSEX_BUF_SIZE];
 static uint16_t rx_idx = 0;
 
-// 計測状態を管理するフラグと時間管理
-bool MIDI_Measuring = false;
-static uint32_t last_send_ms = 0;
-extern volatile uint32_t system_millis; // main.c から参照
+// 時間経過[msec]（main.cから参照）
+extern volatile uint32_t system_millis;
 
-static volatile SensorData_t current_data; //現在の計測値
+// 計測状態を管理するフラグ
+bool MIDI_Measuring = false;
+
+// 最終計測時間
+static uint32_t last_meas_co2 = 0;
+static uint32_t last_meas_vel = 0;
+static uint32_t last_meas_ill = 0;
+
+// 現在の計測値
+static volatile SensorData_t current_data;
 
 static SmAverage smaCO2; // 60秒平均を計算するインスタンス
 
@@ -96,7 +110,6 @@ static void decode_and_process_sysex(uint8_t* encoded_data, uint16_t len) {
         
         case CMD_START_MEAS: //計測開始命令。以降、1sec毎に現在の計測値が送られ続ける
             MIDI_Measuring = true; 
-            last_send_ms = system_millis; // 開始直後に送信されるようにリセット
             break;
             
         case CMD_STOP_MEAS: //計測停止命令
@@ -195,6 +208,14 @@ void MIDI_SendSysEx(uint8_t command_id, uint8_t* data, uint16_t len) {
     tud_midi_packet_write(footer);
 }
 
+uint32_t get_system_millis(){
+    uint32_t now;
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+        now = system_millis;
+    }
+    return now;
+}
+
 void MIDI_APP_Tasks(void) {
     // 受信処理
     if (tud_midi_available()) {
@@ -242,23 +263,30 @@ void MIDI_APP_Tasks(void) {
         }
     }
     
-    // 定期送信処理 (計測中のみ)
+    // 計測処理 (計測中のみ)
     if (MIDI_Measuring) {
-        if (system_millis - last_send_ms >= 1000) {
-            last_send_ms = system_millis;
-            
-            // 計測成功真偽フラグ
-            current_data.status = 0;
-            
-            // 照度
+        
+        // 照度
+        if (MEAS_ILL_SPAN <= get_system_millis() - last_meas_ill)
+        {
             float ill_d;
             if(OPT3001_ReadALS(&ill_d))
             { 
                 current_data.illuminance = (uint32_t)(10 * ill_d);
                 current_data.status |= (1 << 0);
+                
+                last_meas_ill = get_system_millis();
             }
-            
-            // CO2, 温湿度
+            else
+            {
+                current_data.status &= ~(1 << 0); // 計測失敗
+                last_meas_ill += 10; // 10msec休んで再トライ
+            }
+        }
+        
+        // CO2, 温度, 湿度
+        if (MEAS_CO2_SPAN <= get_system_millis() - last_meas_co2)
+        {
             uint16_t co2_u = 0;
             float tmp_f = 0;
             float hmd_f = 0;
@@ -270,8 +298,19 @@ void MIDI_APP_Tasks(void) {
                 current_data.temperature = (int16_t)(100 * tmp_f);
                 current_data.humidity = (uint16_t)(100 * hmd_f);
                 current_data.status |= (1 << 1);
+                
+                last_meas_co2 = get_system_millis();
             }
-            
+            else
+            {
+                current_data.status &= ~(1 << 1); // 計測失敗
+                last_meas_co2 += 50; // 50msec休んで再トライ
+            }
+        }
+        
+        // 風速
+        if (MEAS_VEL_SPAN <= get_system_millis() - last_meas_vel)
+        {
             uint16_t velocity;
             uint16_t voltage;
             if(VELS_readMeasurement(&velocity, &voltage))
@@ -279,8 +318,15 @@ void MIDI_APP_Tasks(void) {
                 current_data.velocity = velocity;
                 current_data.voltage = voltage;
                 current_data.status |= (1 << 2);
+                
+                last_meas_vel = get_system_millis();
             }
-        }
+            else
+            {
+                current_data.status &= ~(1 << 2); // 計測失敗
+                last_meas_vel += 10; // 10msec休んで再トライ
+            }
+        }        
     }
 }
 
