@@ -9,6 +9,7 @@
 #include "opt3001.h"
 #include "velocity_sensor.h"
 #include "stcc4.h"
+#include "eeprom_manager.h"
 
 #include <util/atomic.h>
 
@@ -52,10 +53,24 @@ int main(void)
 {
     SYSTEM_Initialize();
     
+    // EEPROM読み込み
+    EM_loadEEPROM();
+    
     // センサ初期化
     STCC4_initialize();
     OPT3001_Initialize();
     VELS_start();
+    
+    // STCC4は初回起動時のみ工場出荷状態に初期化
+    if(EM_Is_First_Run)
+    {
+        if(STCC4_performFactoryReset())
+        {
+            //成功したらフラグ解除。失敗の場合は次回起動時に持ち越す
+            EM_Is_First_Run = false;
+            EM_updateEEPROM();
+        }
+    }
     STCC4_exitSleep();
     STCC4_performConditioning(); // CO2センサの初期調整処理（同期的に22秒かかる）
     
@@ -86,7 +101,7 @@ int main(void)
         {
             sec_timer = 0;
             
-            if(MIDI_Measuring) B_LED_Toggle();   
+            if(EM_Sensing_Enabled) B_LED_Toggle();   
             else B_LED_SetLow();
         }
     }

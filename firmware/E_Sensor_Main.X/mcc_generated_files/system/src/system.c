@@ -40,6 +40,7 @@ void SYSTEM_Initialize(void)
     PIN_MANAGER_Initialize();
     I2C0_Host_Initialize();
     TCA0_Initialize();
+    NVM_Initialize();
     CPUINT_Initialize();
 }
 

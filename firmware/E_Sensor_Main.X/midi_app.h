@@ -14,8 +14,6 @@ extern "C" {
 
 #include <stdbool.h>
 #include <stdint.h>
-
-extern bool MIDI_Measuring;
  
 // 初期化
 void MIDI_APP_Initialize(void);

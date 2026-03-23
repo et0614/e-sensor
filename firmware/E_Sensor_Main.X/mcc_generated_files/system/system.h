@@ -43,6 +43,7 @@ extern "C" {
 #include "../system/utils/compiler.h"
 #include "config_bits.h"
 #include "../system/pins.h"
+#include "../nvm/nvm.h"
 #include "../system/interrupt.h"
 #include "../system/clock.h"
 #include "../i2c_host/twi0.h"

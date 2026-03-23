@@ -16,6 +16,9 @@
           <itemPath>mcc_generated_files/i2c_host/i2c_host_types.h</itemPath>
           <itemPath>mcc_generated_files/i2c_host/twi0.h</itemPath>
         </logicalFolder>
+        <logicalFolder name="nvm" displayName="nvm" projectFiles="true">
+          <itemPath>mcc_generated_files/nvm/nvm.h</itemPath>
+        </logicalFolder>
         <logicalFolder name="system" displayName="system" projectFiles="true">
           <logicalFolder name="utils" displayName="utils" projectFiles="true">
             <logicalFolder name="assembler" displayName="assembler" projectFiles="true">
@@ -160,6 +163,7 @@
       </logicalFolder>
       <itemPath>tinyusb/tusb_config.h</itemPath>
       <itemPath>midi_app.h</itemPath>
+      <itemPath>eeprom_manager.h</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -183,6 +187,11 @@
         <logicalFolder name="i2c_host" displayName="i2c_host" projectFiles="true">
           <logicalFolder name="src" displayName="src" projectFiles="true">
             <itemPath>mcc_generated_files/i2c_host/src/twi0.c</itemPath>
+          </logicalFolder>
+        </logicalFolder>
+        <logicalFolder name="nvm" displayName="nvm" projectFiles="true">
+          <logicalFolder name="src" displayName="src" projectFiles="true">
+            <itemPath>mcc_generated_files/nvm/src/nvm.c</itemPath>
           </logicalFolder>
         </logicalFolder>
         <logicalFolder name="system" displayName="system" projectFiles="true">
@@ -279,6 +288,7 @@
       <itemPath>main.c</itemPath>
       <itemPath>dcd_mchp_g2.c</itemPath>
       <itemPath>midi_app.c</itemPath>
+      <itemPath>eeprom_manager.c</itemPath>
     </logicalFolder>
   </logicalFolder>
   <sourceRootList>

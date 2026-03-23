@@ -8,8 +8,9 @@
 #include "opt3001.h"
 #include "stcc4.h"
 #include "velocity_sensor.h"
-#include "smAverage.h" //平均化ユーティリティ
+//#include "smAverage.h" //平均化ユーティリティ
 #include "serial.h"
+#include "eeprom_manager.h"
 
 // <editor-fold defaultstate="collapsed" desc="通信仕様">
 
@@ -56,9 +57,6 @@ static uint16_t rx_idx = 0;
 // 時間経過[msec]（main.cから参照）
 extern volatile uint32_t system_millis;
 
-// 計測状態を管理するフラグ
-bool MIDI_Measuring = false;
-
 // 最終計測時間
 static uint32_t last_meas_co2 = 0;
 static uint32_t last_meas_vel = 0;
@@ -67,7 +65,7 @@ static uint32_t last_meas_ill = 0;
 // 現在の計測値
 static volatile SensorData_t current_data;
 
-static SmAverage smaCO2; // 60秒平均を計算するインスタンス
+//static SmAverage smaCO2; // 60秒平均を計算するインスタンス
 
 // <editor-fold defaultstate="collapsed" desc="内部関数">
 
@@ -109,11 +107,13 @@ static void decode_and_process_sysex(uint8_t* encoded_data, uint16_t len) {
             break;
         
         case CMD_START_MEAS: //計測開始命令。以降、1sec毎に現在の計測値が送られ続ける
-            MIDI_Measuring = true; 
+            EM_Sensing_Enabled = true;
+            EM_updateEEPROM();
             break;
             
         case CMD_STOP_MEAS: //計測停止命令
-            MIDI_Measuring = false; 
+            EM_Sensing_Enabled = false;
+            EM_updateEEPROM();
             break;
 
         case CMD_COEF_A_DATA: // 係数A受信
@@ -181,7 +181,7 @@ static void decode_and_process_sysex(uint8_t* encoded_data, uint16_t len) {
 
 void MIDI_APP_Initialize(void)
 {
-    SMA_Init(&smaCO2); //CO2センサ平均化インスタンスの初期化
+    //SMA_Init(&smaCO2); //CO2センサ平均化インスタンスの初期化
 }
 
 // 汎用SysEx送信関数
@@ -264,7 +264,7 @@ void MIDI_APP_Tasks(void) {
     }
     
     // 計測処理 (計測中のみ)
-    if (MIDI_Measuring) {
+    if (EM_Sensing_Enabled) {
         
         // 照度
         if (MEAS_ILL_SPAN <= get_system_millis() - last_meas_ill)
@@ -292,9 +292,10 @@ void MIDI_APP_Tasks(void) {
             float hmd_f = 0;
             if(STCC4_readMeasurement(&co2_u, &tmp_f, &hmd_f))
             {
-                SMA_Add(&smaCO2, co2_u);
-                uint16_t co2Ave = SMA_GetAverage(&smaCO2);
-                current_data.co2_ppm = co2Ave;
+                //SMA_Add(&smaCO2, co2_u);
+                //uint16_t co2Ave = SMA_GetAverage(&smaCO2);
+                //current_data.co2_ppm = co2Ave;
+                current_data.co2_ppm = co2_u;
                 current_data.temperature = (int16_t)(100 * tmp_f);
                 current_data.humidity = (uint16_t)(100 * hmd_f);
                 current_data.status |= (1 << 1);
