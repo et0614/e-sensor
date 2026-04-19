@@ -26,6 +26,20 @@
 static uint8_t rx_buf[SYSEX_BUF_SIZE];
 static uint16_t rx_idx = 0;
 
+// SysEx受信の状態機械
+typedef enum {
+    SYSEX_IDLE,      // 0xF0 待ち
+    SYSEX_RX,        // ペイロード蓄積中
+    SYSEX_OVERFLOW   // バッファ溢れ: 0xF7 までデータを破棄
+} sysex_rx_state_t;
+
+static sysex_rx_state_t rx_state = SYSEX_IDLE;
+
+static inline void sysex_reset_rx(void) {
+    rx_idx = 0;
+    rx_state = SYSEX_IDLE;
+}
+
 // 時間経過[msec]（main.cから参照）
 extern volatile uint32_t system_millis;
 
@@ -62,6 +76,11 @@ static void decode_and_process_sysex(uint8_t* encoded_data, uint16_t len) {
     uint8_t decoded[SYSEX_BUF_SIZE / 2];
     uint16_t d_idx = 0;
 
+    // 最低限の長さ確認 (ManufacturerID + CommandID)
+    if (len < 2) return;
+    // ペイロードはニブル対で構成されるため、残りバイト数は偶数でなければ不正
+    if (((len - 2) % 2) != 0) return;
+
     // 最初の2バイトは Manufacturer ID (7D) と Command ID なのでスキップせず解析
     uint8_t manufacturer_id = encoded_data[0];
     uint8_t command_id = encoded_data[1];
@@ -69,7 +88,7 @@ static void decode_and_process_sysex(uint8_t* encoded_data, uint16_t len) {
     if (manufacturer_id != SYSEX_MANUFACTURER_ID) return;
 
     // 3バイト目以降がニブル分割されたデータ本体
-    for (uint16_t i = 2; i < len; i += 2) {
+    for (uint16_t i = 2; i + 1 < len && d_idx < sizeof(decoded); i += 2) {
         decoded[d_idx++] = (encoded_data[i] << 4) | encoded_data[i+1];
     }
 
@@ -195,6 +214,40 @@ uint32_t get_system_millis(){
     return now;
 }
 
+// 受信バイトを状態機械に1バイト供給する。
+// パケット本体バイトのみを渡す想定（0xF0 で開始、0xF7 で終了）。
+static void sysex_feed_byte(uint8_t b) {
+    if (b == 0xF0) {
+        // 開始バイト: 既存状態を破棄して再同期
+        rx_idx = 0;
+        rx_state = SYSEX_RX;
+        return;
+    }
+    if (b == 0xF7) {
+        // 終了バイト: RX 中なら解析、Overflow/IDLE なら破棄
+        if (rx_state == SYSEX_RX) {
+            decode_and_process_sysex(rx_buf, rx_idx);
+        }
+        sysex_reset_rx();
+        return;
+    }
+    // その他のステータスバイト (>= 0x80) は SysEx 中なら中断して破棄
+    if (b & 0x80) {
+        sysex_reset_rx();
+        return;
+    }
+    // データバイト (< 0x80)
+    if (rx_state == SYSEX_RX) {
+        if (rx_idx < SYSEX_BUF_SIZE) {
+            rx_buf[rx_idx++] = b;
+        } else {
+            // バッファ溢れ: 以降のデータは捨てて 0xF7 待ちに遷移
+            rx_state = SYSEX_OVERFLOW;
+        }
+    }
+    // IDLE / OVERFLOW のデータバイトは黙って破棄
+}
+
 void MIDI_APP_Tasks(void) {
     // 受信処理
     if (tud_midi_available()) {
@@ -204,34 +257,33 @@ void MIDI_APP_Tasks(void) {
 
             // CINごとの応答
             switch (cin) {
-                case 0x04: // SysEx 開始 または 継続
-                    for (int i = 1; i <= 3; i++) {
-                        if (packet[i] == 0xF0) continue; // 開始バイトは飛ばす
-                        if (rx_idx < SYSEX_BUF_SIZE) rx_buf[rx_idx++] = packet[i];
-                    }
+                case 0x04: // SysEx 開始 または 継続 (3バイト)
+                    sysex_feed_byte(packet[1]);
+                    sysex_feed_byte(packet[2]);
+                    sysex_feed_byte(packet[3]);
                     break;
 
-                case 0x05: // SysEx 終了 (1バイト)
+                case 0x05: // SysEx 終了 (1バイト: F7 のみ、または単一バイトメッセージ)
+                    sysex_feed_byte(packet[1]);
+                    break;
+
                 case 0x06: // SysEx 終了 (2バイト)
+                    sysex_feed_byte(packet[1]);
+                    sysex_feed_byte(packet[2]);
+                    break;
+
                 case 0x07: // SysEx 終了 (3バイト)
-                    {
-                        uint8_t end_bytes = (cin == 0x05) ? 1 : (cin == 0x06) ? 2 : 3;
-                        for (int i = 1; i <= end_bytes; i++) {
-                            if (packet[i] == 0xF7) break; // 終了バイトに達したら終わり
-                            if (rx_idx < SYSEX_BUF_SIZE) rx_buf[rx_idx++] = packet[i];
-                        }
-                        // 全データが揃ったので解析
-                        decode_and_process_sysex(rx_buf, rx_idx);
-                        rx_idx = 0; // バッファリセット
-                    }
+                    sysex_feed_byte(packet[1]);
+                    sysex_feed_byte(packet[2]);
+                    sysex_feed_byte(packet[3]);
                     break;
 
                 case 0x08: // ノートOff
                     break; // スルー
-                    
+
                 case 0x09: // ノートOn
                     break; // スルー
-                    
+
                 case 0x0B: // Control Change
                     break; // スルー
 
