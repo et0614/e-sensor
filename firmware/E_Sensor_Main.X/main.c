@@ -17,6 +17,8 @@ volatile uint32_t system_millis = 0;
 volatile uint32_t sec_timer = 0;
 volatile int32_t co2_pfm_timer = 0;
 
+volatile bool conditioning_requested = false;
+
 // 1msecごとのコールバック関数
 void msecHandler(void) 
 {
@@ -72,7 +74,7 @@ int main(void)
         }
     }
     STCC4_exitSleep();
-    STCC4_performConditioning(); // CO2センサの初期調整処理（同期的に22秒かかる）
+    STCC4_startContinuousMeasurement(); //CO2連続計測開始
     
     MIDI_APP_Initialize();
     
@@ -92,9 +94,19 @@ int main(void)
         tud_task();         // USBスタック
         MIDI_APP_Tasks();   // MIDIアプリ処理
         
-        // 初期調整（約22sec）が終わり次第CO2センサ起動
+        // CO2センサ初期調整関連
+        if(conditioning_requested && STCC4_performConditioning()) 
+        {
+            conditioning_requested = false;
+            MIDI_SendSysEx(CMD_CONDITIONING_START, NULL, 0);
+            co2_pfm_timer = 0;
+        }
+        // 初期調整（約22sec）が終わったらCO2センサの連続計測開始
         if(23000 < co2_pfm_timer && STCC4_startContinuousMeasurement())
-                co2_pfm_timer = -1;
+        {
+            MIDI_SendSysEx(CMD_CONDITIONING_DONE, NULL, 0);
+            co2_pfm_timer = -1;
+        }
         
         // 1secタイマ
         if(1000 < sec_timer)
