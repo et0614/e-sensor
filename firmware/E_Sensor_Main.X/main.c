@@ -1,8 +1,10 @@
 #include "mcc_generated_files/system/system.h"
+#include "mcc_generated_files/system/ccp.h"
 #include "mcc_generated_files/timer/tca0.h"
 #include "mcc_generated_files/system/pins.h"
 
 #include <avr/interrupt.h>
+#include <avr/wdt.h>
 
 #include "tinyusb/tusb.h"
 #include "midi_app.h"
@@ -20,12 +22,30 @@ volatile int32_t co2_pfm_timer = 0;
 volatile bool conditioning_requested = false;
 
 // 1msecごとのコールバック関数
-void msecHandler(void) 
+void msecHandler(void)
 {
-    extern volatile uint32_t system_millis;
+    // ISR内なので他割り込みによる競合は無い。単純インクリメントでよい。
     system_millis++;
     sec_timer++;
     if(0 <= co2_pfm_timer) co2_pfm_timer++;
+}
+
+// 32bit変数をアトミックに読むヘルパ
+static inline uint32_t atomic_load_u32(volatile uint32_t *p) {
+    uint32_t v;
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { v = *p; }
+    return v;
+}
+static inline int32_t atomic_load_i32(volatile int32_t *p) {
+    int32_t v;
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { v = *p; }
+    return v;
+}
+static inline void atomic_store_u32(volatile uint32_t *p, uint32_t v) {
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { *p = v; }
+}
+static inline void atomic_store_i32(volatile int32_t *p, int32_t v) {
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { *p = v; }
 }
 
 // TinyUSBが参照する時間取得関数をオーバーライド
@@ -54,7 +74,12 @@ void setup_usb(void) {
 int main(void)
 {
     SYSTEM_Initialize();
-    
+
+    // ウォッチドッグ有効化（~4秒）。以降、main ループで wdt_reset() を必ず呼ぶこと。
+    // I2C / EEPROM 等のポーリング待ちがハングしても、この時間内に wdt_reset() に到達
+    // できなければ MCU が自動でリセットされる。
+    ccp_write_io((void *)&WDT.CTRLA, WDT_PERIOD_4KCLK_gc);
+
     // EEPROM読み込み
     EM_loadEEPROM();
     
@@ -91,29 +116,40 @@ int main(void)
     
     while(1)
     {
+        // ウォッチドッグキック
+        wdt_reset();
+
         tud_task();         // USBスタック
         MIDI_APP_Tasks();   // MIDIアプリ処理
-        
+
         // CO2センサ初期調整関連
-        if(conditioning_requested && STCC4_performConditioning()) 
+        if(conditioning_requested && STCC4_performConditioning())
         {
             conditioning_requested = false;
             MIDI_SendSysEx(CMD_CONDITIONING_START, NULL, 0);
-            co2_pfm_timer = 0;
+            atomic_store_i32(&co2_pfm_timer, 0);
         }
         // 初期調整（約22sec）が終わったらCO2センサの連続計測開始
-        if(23000 < co2_pfm_timer && STCC4_startContinuousMeasurement())
+        if(23000 < atomic_load_i32(&co2_pfm_timer))
         {
-            MIDI_SendSysEx(CMD_CONDITIONING_DONE, NULL, 0);
-            co2_pfm_timer = -1;
+            if(STCC4_startContinuousMeasurement())
+            {
+                MIDI_SendSysEx(CMD_CONDITIONING_DONE, NULL, 0);
+                atomic_store_i32(&co2_pfm_timer, -1);
+            }
+            else
+            {
+                // 失敗時は I2C を叩き続けないよう 1sec バックオフして再試行
+                atomic_store_i32(&co2_pfm_timer, 22000);
+            }
         }
-        
+
         // 1secタイマ
-        if(1000 < sec_timer)
+        if(1000 < atomic_load_u32(&sec_timer))
         {
-            sec_timer = 0;
-            
-            if(EM_Sensing_Enabled) B_LED_Toggle();   
+            atomic_store_u32(&sec_timer, 0);
+
+            if(EM_Sensing_Enabled) B_LED_Toggle();
             else B_LED_SetLow();
         }
     }
