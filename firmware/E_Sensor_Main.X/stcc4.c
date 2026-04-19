@@ -1,6 +1,6 @@
 #include "mcc_generated_files/system/clock.h" //F_CPUの設定
 #include "mcc_generated_files/timer/delay.h"
-#include "Stcc4.h"
+#include "stcc4.h"
 #include "i2c_master.h"
 #include "crc.h"
 
@@ -67,7 +67,8 @@ bool STCC4_isConnected(){
 
 bool STCC4_initialize(){
 	const uint8_t command = CMD_SOFT_RESET;
-	I2C_Write(0x00, &command, 1); //初期化はジェネラルコール
+	// 初期化はジェネラルコール (addr 0x00) での SOFT_RESET
+	if (!I2C_Write(0x00, &command, 1)) return false;
 	DELAY_milliseconds(10); //待機
 
 	return true; // 成功

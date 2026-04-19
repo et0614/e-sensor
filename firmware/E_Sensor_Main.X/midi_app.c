@@ -3,6 +3,7 @@
 #include "crc.h"
 #include "tinyusb/tusb.h"
 
+#include <string.h>
 #include <util/atomic.h>
 
 #include "opt3001.h"
@@ -58,6 +59,19 @@ extern volatile bool conditioning_requested;
 
 // <editor-fold defaultstate="collapsed" desc="内部関数">
 
+// 風速補正係数 (float) の健全性チェック。
+// NaN / Inf / 想定外に巨大な値を弾き、EEPROM 側に破壊的な値が永続化されるのを防ぐ。
+// 明らかな「ゴミ」を弾く程度の緩いレンジチェック。
+static bool is_valid_coef_array(const float *c, uint8_t n) {
+    for (uint8_t i = 0; i < n; i++) {
+        // NaN は自己比較が false になる性質で検出
+        if (c[i] != c[i]) return false;
+        // ±Inf および桁数として非現実的な値を弾く
+        if (c[i] > 1.0e30f || c[i] < -1.0e30f) return false;
+    }
+    return true;
+}
+
 // 4bitニブル分割してパケット送信
 static void send_nibbles(uint8_t val, uint8_t* buffer, uint8_t* buf_idx) {
     uint8_t nibbles[2] = { (val >> 4) & 0x0F, val & 0x0F };
@@ -100,33 +114,40 @@ static void decode_and_process_sysex(uint8_t* encoded_data, uint16_t len) {
             MIDI_SendSysEx(CMD_REPORT_DATA, (uint8_t*)&current_data, sizeof(SensorData_t));
             break;
         
-        case CMD_START_MEAS: //計測開始命令。以降、1sec毎に現在の計測値が送られ続ける
+        case CMD_START_MEAS: // 計測開始命令（以降、Host から CMD_REQ_DATA を受けた時のみ応答）
             EM_Sensing_Enabled = true;
             EM_updateEEPROM();
             break;
-            
+
         case CMD_STOP_MEAS: //計測停止命令
             EM_Sensing_Enabled = false;
             EM_updateEEPROM();
             break;
 
         case CMD_COEF_A_DATA: // 係数A受信
-            if (d_idx >= 21 && CRC_calc8(decoded, 20) == decoded[20]) 
-                VELS_writeCoefficients((float*)decoded, true);
+            if (d_idx >= 21 && CRC_calc8(decoded, 20) == decoded[20]) {
+                // 型パニング回避: uint8_t 配列から float 配列へ memcpy で転送
+                memcpy(coef_tmp, decoded, 20);
+                if (is_valid_coef_array(coef_tmp, 5))
+                    VELS_writeCoefficients(coef_tmp, true);
+            }
             break;
 
         case CMD_REQ_COEF_A: // 係数A要求
-            if (VELS_readCoefficients(coef_tmp, true)) 
+            if (VELS_readCoefficients(coef_tmp, true))
                 MIDI_SendSysEx(CMD_COEF_A_DATA, (uint8_t*)coef_tmp, 20);
             break;
 
         case CMD_COEF_B_DATA: // 係数B受信
-            if (d_idx >= 21 && CRC_calc8(decoded, 20) == decoded[20]) 
-                VELS_writeCoefficients((float*)decoded, false);
+            if (d_idx >= 21 && CRC_calc8(decoded, 20) == decoded[20]) {
+                memcpy(coef_tmp, decoded, 20);
+                if (is_valid_coef_array(coef_tmp, 5))
+                    VELS_writeCoefficients(coef_tmp, false);
+            }
             break;
 
         case CMD_REQ_COEF_B: // 係数B要求
-            if (VELS_readCoefficients(coef_tmp, false)) 
+            if (VELS_readCoefficients(coef_tmp, false))
                 MIDI_SendSysEx(CMD_COEF_B_DATA, (uint8_t*)coef_tmp, 20);
             break;
             
@@ -154,11 +175,17 @@ static void decode_and_process_sysex(uint8_t* encoded_data, uint16_t len) {
             {
                 if (d_idx >= 3 && CRC_calc8(decoded, 2) == decoded[2]) {
                     uint16_t co2lvl = (decoded[0] << 8) | decoded[1];
-                    uint16_t corct;
-                    STCC4_performForcedRecalibration(co2lvl, &corct);
-                    uint8_t corct_bytes[2] = { (uint8_t)(corct >> 8), (uint8_t)(corct & 0xFF) };
-                    MIDI_SendSysEx(CMD_CO2_CALIB_RESULT, corct_bytes, 2);
-                }                
+                    // 補正値（差分）は符号付き 16bit。失敗時は -1 (0xFFFF) が入る。
+                    int16_t corct = 0;
+                    if (STCC4_performForcedRecalibration(co2lvl, &corct)) {
+                        uint16_t corct_u = (uint16_t)corct;
+                        uint8_t corct_bytes[2] = {
+                            (uint8_t)(corct_u >> 8),
+                            (uint8_t)(corct_u & 0xFF)
+                        };
+                        MIDI_SendSysEx(CMD_CO2_CALIB_RESULT, corct_bytes, 2);
+                    }
+                }
             }
             break;
             

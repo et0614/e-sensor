@@ -22,9 +22,9 @@ extern "C" {
  * 1byte: コマンド,  2byte以降: データ
  * H: Host, D: Deviceとする
  */
-#define CMD_REPORT_DATA            0x01  // D->H: 現在の計測値（14 byte）を送信する
-#define CMD_REQ_DATA               0x02  // D->H: 現在の計測値送信命令
-#define CMD_START_MEAS             0x03  // H->D: 計測開始命令
+#define CMD_REPORT_DATA            0x01  // D->H: 現在の計測値（14 byte）を送信する（CMD_REQ_DATA への応答）
+#define CMD_REQ_DATA               0x02  // H->D: 現在の計測値の送信要求（Device は直ちに CMD_REPORT_DATA で応答）
+#define CMD_START_MEAS             0x03  // H->D: 計測開始命令（実計測値は CMD_REQ_DATA 要求時にのみ送信）
 #define CMD_STOP_MEAS              0x04  // H->D: 計測停止命令
 #define CMD_COEF_A_DATA            0x05  // H<->D: 風速計の補正係数A（20 byte+CRC）を送信する。H->Dの場合にはDeviceに保存された係数が上書きされる。
 #define CMD_REQ_COEF_A             0x06  // H->D: 風速計の補正係数A送信命令。Deviceは補正係数を1回送る。
