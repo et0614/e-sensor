@@ -1,0 +1,37 @@
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="E_Sensor.SensorCard"
+             x:Name="this">
+    <Border StrokeShape="RoundRectangle 12"
+            StrokeThickness="1"
+            Stroke="#D1E4F3"
+            BackgroundColor="White"
+            Margin="8"
+            Padding="16"
+            WidthRequest="160" 
+            HeightRequest="140">
+
+
+        <Border.Shadow>
+            <Shadow Offset="2,2" Radius="5" Opacity="0.1" />
+        </Border.Shadow>
+
+        <VerticalStackLayout Spacing="2" VerticalOptions="Center">
+            <Label Text="{Binding Title, Source={x:Reference this}}"
+                   FontSize="14"
+                   TextColor="Gray"
+                   HorizontalOptions="Start" />
+
+            <Label Text="{Binding Value, Source={x:Reference this}}"
+                   FontSize="36"
+                   TextColor="#005A9E" 
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center" />
+
+            <Label Text="{Binding Unit, Source={x:Reference this}}"
+                   FontSize="12"
+                   TextColor="Gray"
+                   HorizontalOptions="End" />
+        </VerticalStackLayout>
+    </Border>
+</ContentView>

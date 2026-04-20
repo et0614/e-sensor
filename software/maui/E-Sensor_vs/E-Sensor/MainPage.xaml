@@ -1,0 +1,169 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewmodels="clr-namespace:E_Sensor"
+             xmlns:res="clr-namespace:E_Sensor.Resources"
+             xmlns:skia="clr-namespace:SkiaSharp.Extended.UI.Controls;assembly=SkiaSharp.Extended.UI"
+             x:Class="E_Sensor.MainPage"
+             x:DataType="viewmodels:MainViewModel"
+             BackgroundColor="#F0F4F8"
+             >
+
+    <ContentPage.Resources>
+        <Style x:Key="BaseMidiButtonStyle" TargetType="Button">
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="TextColor" Value="White" />
+        </Style>
+
+        <Style x:Key="ExportButtonStyle" TargetType="Button" BasedOn="{StaticResource BaseMidiButtonStyle}">
+            <Setter Property="VisualStateManager.VisualStateGroups">
+                <VisualStateGroupList>
+                    <VisualStateGroup x:Name="CommonStates">
+                        <VisualState x:Name="Normal">
+                            <VisualState.Setters>
+                                <Setter Property="BackgroundColor" Value="#3E5C76" />
+                                <Setter Property="BorderColor" Value="#5483AB" />
+                                <Setter Property="BorderWidth" Value="1" />
+                            </VisualState.Setters>
+                        </VisualState>
+                        <VisualState x:Name="Disabled">
+                            <VisualState.Setters>
+                                <Setter Property="BackgroundColor" Value="#253248" />
+                                <Setter Property="TextColor" Value="#5D6D7E" />
+                                <Setter Property="BorderColor" Value="Transparent" />
+                            </VisualState.Setters>
+                        </VisualState>
+                    </VisualStateGroup>
+                </VisualStateGroupList>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ToggleButtonStyle" TargetType="Button" BasedOn="{StaticResource BaseMidiButtonStyle}">
+            <Setter Property="VisualStateManager.VisualStateGroups">
+                <VisualStateGroupList>
+                    <VisualStateGroup x:Name="CommonStates">
+                        <VisualState x:Name="Normal" />
+                        <VisualState x:Name="Disabled">
+                            <VisualState.Setters>
+                                <Setter Property="BackgroundColor" Value="#253248" />
+                                <Setter Property="TextColor" Value="#5D6D7E" />
+                            </VisualState.Setters>
+                        </VisualState>
+                    </VisualStateGroup>
+                </VisualStateGroupList>
+            </Setter>
+        </Style>
+    </ContentPage.Resources>
+
+    <Grid ColumnDefinitions="{OnIdiom Desktop='240, *', Phone='*'}" 
+          RowDefinitions="{OnIdiom Desktop='*', Phone='*,280'}"
+          SafeAreaEdges="None">
+
+        <VerticalStackLayout Grid.Column="0"
+                             Grid.Row="{OnIdiom Desktop=0, Phone=1}"
+                             Padding="20"
+                             Spacing="15"
+                             ZIndex="5"
+                             BackgroundColor="#1B263B">
+
+            <Grid VerticalOptions="Start" Margin="0,0,0,5">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <HorizontalStackLayout Grid.Column="0" Spacing="10" VerticalOptions="Center">
+                    <Label Text="CONNECTION" FontSize="10" FontAttributes="Bold" TextColor="#8E9AAF" VerticalOptions="Center" />
+                    <Ellipse WidthRequest="12" HeightRequest="12" VerticalOptions="Center">
+                        <Ellipse.Triggers>
+                            <DataTrigger TargetType="Ellipse" Binding="{Binding IsDeviceConnected}" Value="True">
+                                <Setter Property="Fill" Value="#4CAF50" />
+                            </DataTrigger>
+                            <DataTrigger TargetType="Ellipse" Binding="{Binding IsDeviceConnected}" Value="False">
+                                <Setter Property="Fill" Value="#F44336" />
+                            </DataTrigger>
+                        </Ellipse.Triggers>
+                    </Ellipse>
+                </HorizontalStackLayout>
+
+                <Label x:Name="RecordCountLabel"
+                       Grid.Column="2"
+                       Text="{Binding RecordedCount, StringFormat='{0} Records'}"
+                       FontSize="15" 
+                       FontAttributes="Bold"
+                       TextColor="White"
+                       VerticalOptions="Center" />
+            </Grid>
+
+            <Button Command="{Binding ToggleRecordCommand}"
+            Style="{StaticResource ToggleButtonStyle}">
+                <Button.Triggers>
+                    <DataTrigger TargetType="Button" Binding="{Binding IsRecording}" Value="False">
+                        <Setter Property="Text" Value="{x:Static res:Strings.StartLogging}" />
+                        <Setter Property="BackgroundColor" Value="#0078D4" />
+                    </DataTrigger>
+                    <DataTrigger TargetType="Button" Binding="{Binding IsRecording}" Value="True">
+                        <Setter Property="Text" Value="{x:Static res:Strings.EndLogging}" />
+                        <Setter Property="BackgroundColor" Value="#D83B01" />
+                    </DataTrigger>
+                </Button.Triggers>
+            </Button>
+
+            <Button Text="{x:Static res:Strings.ExportMessage}"
+                    Command="{Binding ExportDataCommand}" 
+                    Style="{StaticResource ExportButtonStyle}" />
+
+            <VerticalStackLayout VerticalOptions="End" Spacing="2" Margin="0,10,0,0">
+                <HorizontalStackLayout HorizontalOptions="End" Spacing="5">
+                    <Label Text="VER:" FontSize="10" TextColor="#8E9AAF" />
+                    <Label Text="{Binding FirmwareVersion}" FontSize="10" TextColor="White" />
+
+                    <Label Margin="10,0,0,0" Text="ID:" FontSize="10" TextColor="#8E9AAF" />
+                    <Label Text="{Binding DeviceId}" FontSize="10" TextColor="White" />
+                </HorizontalStackLayout>
+            </VerticalStackLayout>
+
+        </VerticalStackLayout>
+
+        <ScrollView Grid.Column="{OnIdiom Desktop=1, Phone=0}" 
+                    Grid.Row="0" 
+                    Padding="0">
+            <FlexLayout Wrap="Wrap" JustifyContent="SpaceEvenly" Padding="5">
+                <FlexLayout.Triggers>
+                    <DataTrigger TargetType="FlexLayout" Binding="{Binding IsDataFresh}" Value="False">
+                        <Setter Property="Opacity" Value="0.5" />
+                    </DataTrigger>
+                    <DataTrigger TargetType="FlexLayout" Binding="{Binding IsDataFresh}" Value="True">
+                        <Setter Property="Opacity" Value="1.0" />
+                    </DataTrigger>
+                </FlexLayout.Triggers>
+
+                <viewmodels:SensorCard Title="{x:Static res:Strings.Temperature}" Value="{Binding Temperature}" Unit="C" />
+                <viewmodels:SensorCard Title="{x:Static res:Strings.RelativeHumidity}" Value="{Binding Humidity}" Unit="%" />
+                <viewmodels:SensorCard Title="{x:Static res:Strings.Velocity}" Value="{Binding Velocity}" Unit="m/s" />
+                <viewmodels:SensorCard Title="{x:Static res:Strings.Illuminance}" Value="{Binding Illuminance}" Unit="lux" />
+                <viewmodels:SensorCard Title="{x:Static res:Strings.CO2Level}" Value="{Binding Co2Level}" Unit="ppm" />
+            </FlexLayout>
+        </ScrollView>
+
+        <Grid  Grid.Column="{OnIdiom Desktop=1, Phone=0}" Grid.Row="0"
+               VerticalOptions="End" 
+               HeightRequest="100" 
+               Margin="0" 
+               InputTransparent="True"
+               IsVisible="{Binding IsDogVisible}">
+
+            <skia:SKLottieView
+                x:Name="DogLottie"
+                Source="DogWalking.json"
+                RepeatCount="-1"
+                HorizontalOptions="Start"
+                TranslationX="0"
+                WidthRequest="100"
+                HeightRequest="100"
+                Margin="0,0,0,-30"/>
+        </Grid>
+
+    </Grid>
+</ContentPage>
