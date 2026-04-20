@@ -38,6 +38,9 @@ class ESensorClient:
     CMD_CO2_CAL_REQ   = 0x14    # CO2校正実行
     CMD_CO2_RESET_REQ = 0x15    # CO2工場出荷時リセット要求
     CMD_CO2_RESET_RES = 0x16    # CO2リセット完了通知
+    CMD_CONDITIONING_REQ   = 0x17  # CO2初期調整要求 (H->D)
+    CMD_CONDITIONING_START = 0x18  # CO2初期調整開始通知 (D->H)
+    CMD_CONDITIONING_DONE  = 0x19  # CO2初期調整完了通知 (D->H)
 
     def __init__(self, port_keyword: str = 'E-Sensor'):
         self.port_keyword = port_keyword
@@ -49,6 +52,8 @@ class ESensorClient:
         self.on_version_received: Optional[Callable[[int, int, int], None]] = None
         self.on_co2_cal_received: Optional[Callable[[int], None]] = None
         self.on_co2_reset_received: Optional[Callable[[], None]] = None
+        self.on_conditioning_start: Optional[Callable[[], None]] = None
+        self.on_conditioning_done: Optional[Callable[[], None]] = None
 
         # 同期用一時保存
         self._last_sensor_data: Optional[SensorData] = None
@@ -56,6 +61,8 @@ class ESensorClient:
         self._last_version: Optional[Tuple[int, int, int]] = None
         self._last_co2_correction: Optional[int] = None
         self._co2_reset_notified = False
+        self._conditioning_start_notified = False
+        self._conditioning_done_notified = False
 
 
     def connect(self) -> bool:
@@ -187,7 +194,7 @@ class ESensorClient:
 
 
     def perform_co2_calibration(self, target_ppm: int):
-        """CO2センサの強制校正を実行する (CMD 0x13)"""
+        """CO2センサの強制校正を実行する (CMD 0x14)"""
         # Big Endian (2byte) + CRC
         payload = bytearray(struct.pack('>H', target_ppm))
         payload.append(self._crc8(payload))
@@ -195,8 +202,39 @@ class ESensorClient:
 
 
     def reset_co2_factory(self):
-        """CO2センサを工場出荷時設定にリセットする (CMD 0x14)"""
+        """CO2センサを工場出荷時設定にリセットする (CMD 0x15)"""
         self._send_cmd(self.CMD_CO2_RESET_REQ)
+
+
+    def request_conditioning(self):
+        """CO2センサの初期調整を要求する (CMD 0x17)"""
+        self._send_cmd(self.CMD_CONDITIONING_REQ)
+
+
+    def perform_conditioning(self, wait_timeout: float = 30.0) -> bool:
+        """
+        CO2センサの初期調整を要求し、完了通知を受けるまでブロック待機する。
+        初期調整には約22秒かかる。
+
+        Args:
+            wait_timeout: 完了通知を待つ最大秒数（デフォルト 30 秒）
+
+        Returns:
+            True  : 完了通知 (CMD_CONDITIONING_DONE) を受信
+            False : タイムアウトまでに完了通知が来なかった
+        """
+        self._conditioning_start_notified = False
+        self._conditioning_done_notified = False
+        self.flush()
+        self.request_conditioning()
+
+        start_time = time.time()
+        while (time.time() - start_time) < wait_timeout:
+            self.poll()
+            if self._conditioning_done_notified:
+                return True
+            time.sleep(0.05)
+        return False
 
 
     def request_coefficients(self, type_a: bool = True):
@@ -266,13 +304,13 @@ class ESensorClient:
             
             # ID応答
             elif cmd_id == self.CMD_ID_RES:
-                # 10byte ID + 1byte CRC = 11byte
+                # 4byte ID + 1byte CRC = 5byte
                 if len(raw_payload) >= 5 and self._crc8(raw_payload[:4]) == raw_payload[4]:
                     id_hex = raw_payload[:4].hex().upper()
                     self._last_device_id = id_hex
                     if self.on_id_received:
                         self.on_id_received(id_hex)
-                        
+
             # バージョン応答
             elif cmd_id == self.CMD_VER_RES:
                 if len(raw_payload) >= 4 and self._crc8(raw_payload[:3]) == raw_payload[3]:
@@ -280,11 +318,12 @@ class ESensorClient:
                     self._last_version = (major, minor, rev)
                     if self.on_version_received:
                         self.on_version_received(major, minor, rev)
-            
+
             # CO2校正結果
             elif cmd_id == self.CMD_CO2_CAL_RES:
                 if len(raw_payload) >= 3 and self._crc8(raw_payload[:2]) == raw_payload[2]:
-                    correction = struct.unpack('>H', raw_payload[:2])[0]
+                    # 補正値 (差分) は符号付き 16bit。失敗時は -1 (0xFFFF) が入る。
+                    correction = struct.unpack('>h', raw_payload[:2])[0]
                     self._last_co2_correction = correction
                     if self.on_co2_cal_received:
                         self.on_co2_cal_received(correction)
@@ -294,6 +333,22 @@ class ESensorClient:
                 self._co2_reset_notified = True
                 if self.on_co2_reset_received:
                     self.on_co2_reset_received()
+
+            # CO2初期調整開始通知
+            elif cmd_id == self.CMD_CONDITIONING_START:
+                # ペイロード無し (CRC 1 byte のみ届く)
+                if len(raw_payload) >= 1 and self._crc8(b'') == raw_payload[0]:
+                    self._conditioning_start_notified = True
+                    if self.on_conditioning_start:
+                        self.on_conditioning_start()
+
+            # CO2初期調整完了通知
+            elif cmd_id == self.CMD_CONDITIONING_DONE:
+                # ペイロード無し (CRC 1 byte のみ届く)
+                if len(raw_payload) >= 1 and self._crc8(b'') == raw_payload[0]:
+                    self._conditioning_done_notified = True
+                    if self.on_conditioning_done:
+                        self.on_conditioning_done()
         return None
     
 
