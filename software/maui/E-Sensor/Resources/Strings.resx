@@ -162,4 +162,37 @@
   <data name="Records" xml:space="preserve">
     <value>Records</value>
   </data>
+  <data name="Maintenance" xml:space="preserve">
+    <value>Maintenance</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="MaintConditioning" xml:space="preserve">
+    <value>CO2 Conditioning (~22 s)</value>
+  </data>
+  <data name="MaintFactoryReset" xml:space="preserve">
+    <value>CO2 Factory Reset</value>
+  </data>
+  <data name="ConfirmConditioningTitle" xml:space="preserve">
+    <value>Run CO2 Conditioning?</value>
+  </data>
+  <data name="ConfirmConditioningMsg" xml:space="preserve">
+    <value>During conditioning (about 22 seconds), CO2, temperature and humidity readings will all be unavailable. Continue?</value>
+  </data>
+  <data name="ConfirmFactoryResetTitle" xml:space="preserve">
+    <value>CO2 Factory Reset</value>
+  </data>
+  <data name="ConfirmFactoryResetMsg" xml:space="preserve">
+    <value>Reset the CO2 sensor to factory defaults? Auto-calibration will rebuild from fresh trend data.</value>
+  </data>
+  <data name="ConditioningStarted" xml:space="preserve">
+    <value>CO2 conditioning started (about 22 seconds).</value>
+  </data>
+  <data name="ConditioningDone" xml:space="preserve">
+    <value>CO2 conditioning complete.</value>
+  </data>
+  <data name="FactoryResetDone" xml:space="preserve">
+    <value>CO2 sensor reset to factory defaults.</value>
+  </data>
 </root>
