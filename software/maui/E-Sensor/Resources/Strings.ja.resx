@@ -162,4 +162,37 @@
   <data name="Records" xml:space="preserve">
     <value>件</value>
   </data>
+  <data name="Maintenance" xml:space="preserve">
+    <value>メンテナンス</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>キャンセル</value>
+  </data>
+  <data name="MaintConditioning" xml:space="preserve">
+    <value>CO2 初期調整（約 22 秒）</value>
+  </data>
+  <data name="MaintFactoryReset" xml:space="preserve">
+    <value>CO2 工場出荷時リセット（破壊的）</value>
+  </data>
+  <data name="ConfirmConditioningTitle" xml:space="preserve">
+    <value>CO2 初期調整を実行しますか？</value>
+  </data>
+  <data name="ConfirmConditioningMsg" xml:space="preserve">
+    <value>初期調整中、CO2 センサは約 22 秒間応答できなくなります。続行しますか？</value>
+  </data>
+  <data name="ConfirmFactoryResetTitle" xml:space="preserve">
+    <value>CO2 工場出荷時リセット</value>
+  </data>
+  <data name="ConfirmFactoryResetMsg" xml:space="preserve">
+    <value>CO2 校正データはすべて消去され、工場出荷状態に戻ります。元に戻せません。確認のため RESET と入力してください。</value>
+  </data>
+  <data name="ConditioningStarted" xml:space="preserve">
+    <value>CO2 初期調整を開始しました（約 22 秒）。</value>
+  </data>
+  <data name="ConditioningDone" xml:space="preserve">
+    <value>CO2 初期調整が完了しました。</value>
+  </data>
+  <data name="FactoryResetDone" xml:space="preserve">
+    <value>CO2 センサを工場出荷状態にリセットしました。</value>
+  </data>
 </root>

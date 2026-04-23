@@ -79,6 +79,7 @@ public partial class MainViewModel : ObservableObject
   [NotifyCanExecuteChangedFor(nameof(StopRecordCommand))]
   [NotifyCanExecuteChangedFor(nameof(ExportDataCommand))]
   [NotifyCanExecuteChangedFor(nameof(ToggleRecordCommand))]
+  [NotifyCanExecuteChangedFor(nameof(OpenMaintenanceMenuCommand))]
   private bool _isDeviceConnected;
 
   /// <summary>計測データが新鮮か否か</summary>
@@ -176,6 +177,54 @@ public partial class MainViewModel : ObservableObject
   private void StopRecord()
   {
     IsRecording = false;
+  }
+
+  /// <summary>メンテナンスメニュー（CO2 初期調整 / 工場出荷時リセット）コマンド</summary>
+  /// <remarks>
+  /// 頻度が低く誤操作の影響が大きい操作なので、ActionSheet → 確認ダイアログ
+  /// （工場リセットは "RESET" の入力プロンプトによる二段階確認）の経路で
+  /// 実行する。
+  /// </remarks>
+  [RelayCommand(CanExecute = nameof(IsDeviceConnected))]
+  private async Task OpenMaintenanceMenu()
+  {
+    var page = Application.Current?.Windows.FirstOrDefault()?.Page;
+    if (page == null) return;
+
+    string action = await page.DisplayActionSheet(
+        Resources.Strings.Maintenance,
+        Resources.Strings.Cancel,
+        destruction: null,
+        Resources.Strings.MaintConditioning,
+        Resources.Strings.MaintFactoryReset);
+
+    if (action == Resources.Strings.MaintConditioning)
+    {
+      bool ok = await page.DisplayAlertAsync(
+          Resources.Strings.ConfirmConditioningTitle,
+          Resources.Strings.ConfirmConditioningMsg,
+          Resources.Strings.Yes,
+          Resources.Strings.No);
+      if (ok)
+      {
+        _midiService.SendSysEx(MidiCommands.CMD_CONDITIONING_REQ);
+      }
+    }
+    else if (action == Resources.Strings.MaintFactoryReset)
+    {
+      // 二段階確認: "RESET" と入力させる
+      string? input = await page.DisplayPromptAsync(
+          Resources.Strings.ConfirmFactoryResetTitle,
+          Resources.Strings.ConfirmFactoryResetMsg,
+          Resources.Strings.Yes,
+          Resources.Strings.No,
+          placeholder: "RESET",
+          keyboard: Keyboard.Default);
+      if (!string.IsNullOrEmpty(input) && input.Trim().ToUpperInvariant() == "RESET")
+      {
+        _midiService.SendSysEx(MidiCommands.CMD_CO2_RESET_REQ);
+      }
+    }
   }
 
   /// <summary>記録出力コマンド</summary>
@@ -385,7 +434,35 @@ public partial class MainViewModel : ObservableObject
         FirmwareVersion = payload.Length >= 3 ? $"{payload[0]}.{payload[1]}.{payload[2]}" : "Unknown";
       });
     }
-  }  
+    // CO2 初期調整 開始通知
+    else if (data[1] == MidiCommands.CMD_CONDITIONING_START)
+    {
+      ShowMaintenanceNotice(Resources.Strings.ConditioningStarted);
+    }
+    // CO2 初期調整 完了通知
+    else if (data[1] == MidiCommands.CMD_CONDITIONING_DONE)
+    {
+      ShowMaintenanceNotice(Resources.Strings.ConditioningDone);
+    }
+    // CO2 工場出荷時リセット 完了通知
+    else if (data[1] == MidiCommands.CMD_CO2_RESET_RES)
+    {
+      ShowMaintenanceNotice(Resources.Strings.FactoryResetDone);
+    }
+  }
+
+  /// <summary>メンテナンス系操作の完了通知をユーザーに見せる</summary>
+  private void ShowMaintenanceNotice(string message)
+  {
+    Application.Current?.Dispatcher.Dispatch(async () =>
+    {
+      var page = Application.Current?.Windows.FirstOrDefault()?.Page;
+      if (page != null)
+      {
+        await page.DisplayAlertAsync(Resources.Strings.Maintenance, message, "OK");
+      }
+    });
+  }
 
   /// <summary>MIDI Packetを解析して最新データとして保存する</summary>
   private void parseSensorPacket(ReadOnlySpan<byte> p)

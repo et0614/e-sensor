@@ -162,4 +162,37 @@
   <data name="Records" xml:space="preserve">
     <value>Records</value>
   </data>
+  <data name="Maintenance" xml:space="preserve">
+    <value>Maintenance</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="MaintConditioning" xml:space="preserve">
+    <value>CO2 Conditioning (~22 s)</value>
+  </data>
+  <data name="MaintFactoryReset" xml:space="preserve">
+    <value>CO2 Factory Reset (destructive)</value>
+  </data>
+  <data name="ConfirmConditioningTitle" xml:space="preserve">
+    <value>Run CO2 Conditioning?</value>
+  </data>
+  <data name="ConfirmConditioningMsg" xml:space="preserve">
+    <value>The CO2 sensor will be unavailable for about 22 seconds while conditioning runs. Continue?</value>
+  </data>
+  <data name="ConfirmFactoryResetTitle" xml:space="preserve">
+    <value>CO2 Factory Reset</value>
+  </data>
+  <data name="ConfirmFactoryResetMsg" xml:space="preserve">
+    <value>All CO2 calibration data will be erased and the sensor restored to factory defaults. This cannot be undone. Type RESET to confirm.</value>
+  </data>
+  <data name="ConditioningStarted" xml:space="preserve">
+    <value>CO2 conditioning started (about 22 seconds).</value>
+  </data>
+  <data name="ConditioningDone" xml:space="preserve">
+    <value>CO2 conditioning complete.</value>
+  </data>
+  <data name="FactoryResetDone" xml:space="preserve">
+    <value>CO2 sensor reset to factory defaults.</value>
+  </data>
 </root>

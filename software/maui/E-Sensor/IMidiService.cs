@@ -18,6 +18,11 @@ namespace E_Sensor
     public const byte CMD_ID_REQ = 0x10; // H->D: ID要求
     public const byte CMD_VER_RES = 0x11; // D->H: バージョン応答
     public const byte CMD_VER_REQ = 0x12; // H->D: バージョン要求
+    public const byte CMD_CO2_RESET_REQ = 0x15; // H->D: CO2 工場出荷時リセット要求
+    public const byte CMD_CO2_RESET_RES = 0x16; // D->H: CO2 工場出荷時リセット完了通知
+    public const byte CMD_CONDITIONING_REQ = 0x17; // H->D: CO2 初期調整要求
+    public const byte CMD_CONDITIONING_START = 0x18; // D->H: CO2 初期調整開始通知
+    public const byte CMD_CONDITIONING_DONE = 0x19; // D->H: CO2 初期調整完了通知
   }
 
   public interface IMidiService
