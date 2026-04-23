@@ -212,15 +212,14 @@ public partial class MainViewModel : ObservableObject
     }
     else if (action == Resources.Strings.MaintFactoryReset)
     {
-      // 二段階確認: "RESET" と入力させる
-      string? input = await page.DisplayPromptAsync(
+      // 工場出荷時リセットは校正係数を消すわけではなく、過去のトレンドから
+      // 自動校正し直すだけなので Yes/No の確認だけで十分。
+      bool ok = await page.DisplayAlertAsync(
           Resources.Strings.ConfirmFactoryResetTitle,
           Resources.Strings.ConfirmFactoryResetMsg,
           Resources.Strings.Yes,
-          Resources.Strings.No,
-          placeholder: "RESET",
-          keyboard: Keyboard.Default);
-      if (!string.IsNullOrEmpty(input) && input.Trim().ToUpperInvariant() == "RESET")
+          Resources.Strings.No);
+      if (ok)
       {
         _midiService.SendSysEx(MidiCommands.CMD_CO2_RESET_REQ);
       }

@@ -79,7 +79,7 @@ namespace E_Sensor.Resources {
         }
 
         /// <summary>
-        ///   The CO2 sensor will be unavailable for about 22 seconds while conditioning runs. Continue? に類似しているローカライズされた文字列を検索します。
+        ///   During conditioning (about 22 seconds), CO2, temperature and humidity readings will all be unavailable. Continue? に類似しているローカライズされた文字列を検索します。
         /// </summary>
         public static string ConfirmConditioningMsg {
             get {
@@ -97,7 +97,7 @@ namespace E_Sensor.Resources {
         }
 
         /// <summary>
-        ///   All CO2 calibration data will be erased and the sensor restored to factory defaults. This cannot be undone. Type RESET to confirm. に類似しているローカライズされた文字列を検索します。
+        ///   Reset the CO2 sensor to factory defaults? Auto-calibration will rebuild from fresh trend data. に類似しているローカライズされた文字列を検索します。
         /// </summary>
         public static string ConfirmFactoryResetMsg {
             get {
@@ -205,7 +205,7 @@ namespace E_Sensor.Resources {
         }
 
         /// <summary>
-        ///   CO2 Factory Reset (destructive) に類似しているローカライズされた文字列を検索します。
+        ///   CO2 Factory Reset に類似しているローカライズされた文字列を検索します。
         /// </summary>
         public static string MaintFactoryReset {
             get {
