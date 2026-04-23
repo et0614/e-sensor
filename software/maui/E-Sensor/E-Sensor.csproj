@@ -86,16 +86,6 @@
 		<PackageReference Include="Melanchall.DryWetMidi" Version="8.0.3" />
 	</ItemGroup>
 
-	<!--
-	  MacCatalyst は iOS と同じ CoreMIDI / UIKit / AVFoundation を持つので、
-	  Platforms\iOS\ のサービス実装をそのまま MacCatalyst ビルドにも取り込む。
-	  クラス本体・namespace は iOS のまま (E_Sensor.Platforms.iOS) で利用する。
-	-->
-	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">
-		<Compile Include="Platforms\iOS\IosMidiService.cs" />
-		<Compile Include="Platforms\iOS\IosLoggingService.cs" />
-	</ItemGroup>
-
 	<ItemGroup>
 	  <MauiXaml Update="SensorCard.xaml">
 	    <Generator>MSBuild:Compile</Generator>
