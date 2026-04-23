@@ -123,6 +123,8 @@
                                  IsEnabled="{Binding IsDeviceConnected}"
                                  WidthRequest="9"
                                  HeightRequest="9"
+                                 MinimumWidthRequest="0"
+                                 MinimumHeightRequest="0"
                                  BackgroundColor="Transparent"
                                  Padding="0"
                                  Margin="0,0,6,0"
