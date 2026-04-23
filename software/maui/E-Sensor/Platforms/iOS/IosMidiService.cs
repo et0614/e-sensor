@@ -101,14 +101,7 @@ namespace E_Sensor.Platforms.iOS
         }
       }
 
-      if (IsConnected)
-      {
-        Task.Run(async () =>
-        {
-          await Task.Delay(500);
-          SendSysEx(MidiCommands.CMD_START_MEAS);
-        });
-      }
+      // 接続成立後の計測開始 (CMD_START_MEAS) は ViewModel 側で一元送信する。
     }
 
     private void OnMidiMessageReceived(object? sender, MidiPacketsEventArgs e)

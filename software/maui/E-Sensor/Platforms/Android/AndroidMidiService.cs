@@ -92,12 +92,7 @@ namespace E_Sensor.Platforms.Android
       IsConnected = true;
       ConnectionChanged?.Invoke(true);
 
-      // 自動計測開始コマンド送信
-      Task.Run(async () =>
-      {
-        await Task.Delay(500);
-        SendSysEx(MidiCommands.CMD_START_MEAS);
-      });
+      // 接続成立後の計測開始 (CMD_START_MEAS) は ViewModel 側で一元送信する。
     }
 
     public void SendSysEx(byte cmdId, byte[]? payload = null)

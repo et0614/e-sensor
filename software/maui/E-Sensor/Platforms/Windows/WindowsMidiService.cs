@@ -120,7 +120,7 @@ namespace E_Sensor.Platforms.Windows
       _lastDeviceNames = currentDevices;
     }
 
-    private async void TryConnect()
+    private void TryConnect()
     {
       if (IsConnected || _isConnecting) return; // 接続中または試行中は抜ける
       _isConnecting = true;
@@ -150,9 +150,7 @@ namespace E_Sensor.Platforms.Windows
           IsConnected = true;
           ConnectionChanged?.Invoke(true);
 
-          // 自動計測開始
-          await Task.Delay(300);
-          SendSysEx(MidiCommands.CMD_START_MEAS);
+          // 接続成立後の計測開始 (CMD_START_MEAS) は ViewModel 側で一元送信する。
         }
       }
       catch(Exception ex)
