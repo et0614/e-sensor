@@ -30,11 +30,12 @@ namespace E_Sensor
 
 #if WINDOWS
       builder.Services.AddSingleton<IMidiService, WindowsMidiService>();
-      builder.Services.AddSingleton<ILoggingService, DummyLoggingService>();      
+      builder.Services.AddSingleton<ILoggingService, DummyLoggingService>();
 #elif ANDROID
       builder.Services.AddSingleton<IMidiService, E_Sensor.Platforms.Android.AndroidMidiService>();
       builder.Services.AddSingleton<ILoggingService, E_Sensor.Platforms.Android.AndroidLoggingService>();
-#elif IOS
+#elif IOS || MACCATALYST
+      // MacCatalyst は iOS の CoreMIDI 実装をそのまま共有する (csproj で Compile Include)
       builder.Services.AddSingleton<IMidiService, E_Sensor.Platforms.iOS.IosMidiService>();
       builder.Services.AddSingleton<ILoggingService, E_Sensor.Platforms.iOS.IosLoggingService>();
 #endif

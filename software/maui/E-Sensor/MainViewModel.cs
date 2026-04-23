@@ -420,7 +420,11 @@ public partial class MainViewModel : ObservableObject
         _hasValidDataReceived = false;
         StartPolling();
 
-        // 接続時にIDとバージョンを1回だけ要求する
+        // 接続時に計測開始を指示し、ID とバージョンを 1 回だけ要求する。
+        // CMD_START_MEAS はファーム側 EM_Sensing_Enabled を有効化するため、
+        // 以前に別クライアントが CMD_STOP_MEAS で停止させていた場合でも
+        // このアプリ起動で計測が再開される。
+        _midiService.SendSysEx(MidiCommands.CMD_START_MEAS);
         _midiService.SendSysEx(MidiCommands.CMD_ID_REQ);
         _midiService.SendSysEx(MidiCommands.CMD_VER_REQ);
       }
