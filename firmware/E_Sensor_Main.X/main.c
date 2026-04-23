@@ -17,7 +17,10 @@
 
 volatile uint32_t system_millis = 0;
 volatile uint32_t sec_timer = 0;
-volatile int32_t co2_pfm_timer = 0;
+// CO2 初期調整用のタイマ。休眠状態は -1、調整要求受信時に 0 にセットされ、
+// ISR が 0 以上の場合のみ 1msec 刻みでインクリメントする。起動直後に
+// CMD_CONDITIONING_DONE が誤発火しないよう -1 で初期化する。
+volatile int32_t co2_pfm_timer = -1;
 
 volatile bool conditioning_requested = false;
 
