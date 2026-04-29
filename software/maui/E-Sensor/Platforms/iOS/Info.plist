@@ -27,6 +27,14 @@
 		<!--<string>UIInterfaceOrientationLandscapeLeft</string>-->
 		<!--<string>UIInterfaceOrientationLandscapeRight</string>-->
 	</array>
+	<!--
+	  iPad の multitasking (Slide Over / Split View / Stage Manager) を無効化する。
+	  これを true にしないと UISupportedInterfaceOrientations~ipad に 4 方向すべて
+	  含めるよう Apple のバリデーションに要求される。本アプリは縦向きのみで運用する
+	  ため multitasking から opt out して縦 2 方向だけの宣言を許容させる。
+	-->
+	<key>UIRequiresFullScreen</key>
+	<true/>
 	<key>XSAppIconAssets</key>
 	<string>Assets.xcassets/appicon.appiconset</string>
 
