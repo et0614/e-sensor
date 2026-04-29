@@ -117,21 +117,30 @@
             <VerticalStackLayout VerticalOptions="End" Spacing="2" Margin="0,10,0,0">
                 <HorizontalStackLayout HorizontalOptions="End" Spacing="5" VerticalOptions="Center">
                     <!-- 工場リセット / 初期調整など、頻度が低く誤操作のリスクがある操作は
-                         小さなアイコンに集約してアクションシート経由で実行する。 -->
-                    <ImageButton Source="maintenance.svg"
-                                 Command="{Binding OpenMaintenanceMenuCommand}"
-                                 IsEnabled="{Binding IsDeviceConnected}"
-                                 WidthRequest="18"
-                                 HeightRequest="18"
-                                 MinimumWidthRequest="0"
-                                 MinimumHeightRequest="0"
-                                 BackgroundColor="Transparent"
-                                 Padding="0"
-                                 Margin="0,0,6,0"
-                                 Opacity="0.7"
-                                 VerticalOptions="Center"
-                                 ToolTipProperties.Text="{x:Static res:Strings.Maintenance}"
-                                 AutomationProperties.Name="{x:Static res:Strings.Maintenance}" />
+                         小さなアイコンに集約してアクションシート経由で実行する。
+                         iOS の MAUI ImageButton は小サイズ・透過背景・Padding=0 の組合せで
+                         画像が描画されない既知の癖があるため、Image + TapGestureRecognizer
+                         でアイコンを表示する。CanExecute は OpacityとInputTransparent の
+                         DataTrigger で表現する。 -->
+                    <Image Source="maintenance.svg"
+                           WidthRequest="18"
+                           HeightRequest="18"
+                           Aspect="AspectFit"
+                           Opacity="0.7"
+                           Margin="0,0,6,0"
+                           VerticalOptions="Center"
+                           ToolTipProperties.Text="{x:Static res:Strings.Maintenance}"
+                           AutomationProperties.Name="{x:Static res:Strings.Maintenance}">
+                        <Image.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding OpenMaintenanceMenuCommand}" />
+                        </Image.GestureRecognizers>
+                        <Image.Triggers>
+                            <DataTrigger TargetType="Image" Binding="{Binding IsDeviceConnected}" Value="False">
+                                <Setter Property="Opacity" Value="0.3" />
+                                <Setter Property="InputTransparent" Value="True" />
+                            </DataTrigger>
+                        </Image.Triggers>
+                    </Image>
                     <Label Text="VER:" FontSize="10" TextColor="#8E9AAF" VerticalOptions="Center" />
                     <Label Text="{Binding FirmwareVersion}" FontSize="10" TextColor="White" VerticalOptions="Center" />
 
