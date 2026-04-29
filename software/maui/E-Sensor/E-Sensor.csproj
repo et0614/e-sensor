@@ -92,9 +92,16 @@
 	  </MauiXaml>
 	</ItemGroup>
 
+	<!-- 個別アイコンの BaseSize を明示。glob (MauiImage Include="Resources\Images\*")
+	     だけでは iOS Resizetizer が "Unable to load image file" 警告で
+	     ラスタライズに失敗するケースがあるため、BaseSize を渡して
+	     Resizetizer が確実に処理できるようにする。 -->
+	<ItemGroup>
+	  <MauiImage Update="Resources\Images\maintenance.svg" BaseSize="64,64" />
+	</ItemGroup>
+
 	<ItemGroup>
 	  <Folder Include="Platforms\Common\" />
-	  <Folder Include="Resources\Images\" />
 	</ItemGroup>
 
 	<ItemGroup>
