@@ -121,8 +121,10 @@
                          iOS の MAUI ImageButton は小サイズ・透過背景・Padding=0 の組合せで
                          画像が描画されない既知の癖があるため、Image + TapGestureRecognizer
                          でアイコンを表示する。CanExecute は OpacityとInputTransparent の
-                         DataTrigger で表現する。 -->
-                    <Image Source="maintenance.svg"
+                         DataTrigger で表現する。アイコン自体は SVG ではなく PNG を直接配置
+                         する (iOS Resizetizer の SVG ラスタライズが特定環境で失敗する
+                         ことがあるため)。 -->
+                    <Image Source="maintenance.png"
                            WidthRequest="18"
                            HeightRequest="18"
                            Aspect="AspectFit"

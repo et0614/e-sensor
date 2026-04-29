@@ -31,6 +31,9 @@
 		<TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
 		<AssemblyTitle>E-Sensor</AssemblyTitle>
 		<Copyright>Eisuke Togashi</Copyright>
+
+		<!--以下はXcodeのバージョンチェックを無効化する一時設定。.NET for iOSのバージョン更新後に削除-->
+		<ValidateXcodeVersion>false</ValidateXcodeVersion>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)'=='Debug|net10.0-ios'">
@@ -90,14 +93,6 @@
 	  <MauiXaml Update="SensorCard.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
-	</ItemGroup>
-
-	<!-- 個別アイコンの BaseSize を明示。glob (MauiImage Include="Resources\Images\*")
-	     だけでは iOS Resizetizer が "Unable to load image file" 警告で
-	     ラスタライズに失敗するケースがあるため、BaseSize を渡して
-	     Resizetizer が確実に処理できるようにする。 -->
-	<ItemGroup>
-	  <MauiImage Update="Resources\Images\maintenance.svg" BaseSize="64,64" />
 	</ItemGroup>
 
 	<ItemGroup>
