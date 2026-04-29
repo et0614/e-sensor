@@ -18,8 +18,8 @@
 		<ApplicationId>net.hvacsimulator.esensor</ApplicationId>
 
 		<!-- Versions -->
-		<ApplicationDisplayVersion>1.0.2</ApplicationDisplayVersion>
-		<ApplicationVersion>3</ApplicationVersion>
+		<ApplicationDisplayVersion>1.0.3</ApplicationDisplayVersion>
+		<ApplicationVersion>4</ApplicationVersion>
 
 		<!-- To develop, package, and publish an app to the Microsoft Store, see: https://aka.ms/MauiTemplateUnpackaged -->
 		<WindowsPackageType>None</WindowsPackageType>
@@ -33,7 +33,7 @@
 		<Copyright>Eisuke Togashi</Copyright>
 
 		<!--以下はXcodeのバージョンチェックを無効化する一時設定。.NET for iOSのバージョン更新後に削除-->
-		<ValidateXcodeVersion>false</ValidateXcodeVersion>
+		<!--<ValidateXcodeVersion>false</ValidateXcodeVersion>-->
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)'=='Debug|net10.0-ios'">
@@ -93,10 +93,6 @@
 	  <MauiXaml Update="SensorCard.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
-	</ItemGroup>
-
-	<ItemGroup>
-	  <Folder Include="Platforms\Common\" />
 	</ItemGroup>
 
 	<ItemGroup>
