@@ -20,6 +20,7 @@
 #include <string.h>
 #include <math.h>
 #include <avr/sleep.h>
+#include <avr/wdt.h>
 
 // </editor-fold>
 
@@ -267,9 +268,15 @@ int main(void)
     
     uint8_t prev_enabled = SharedMemory.reg.enable;
     while(1)
-    {        
+    {
+        // WDT (FUSE で 4.1s) のキック。EEPROM 書き込み・I2C 通信・浮動小数点計算など
+        // 比較的長い処理を含むがいずれも秒オーダ未満で完了するため、ループ先頭の
+        // 1 か所で十分。SLEEP_MODE_IDLE では WDT も計時継続するが、I2C/RTC 割込で
+        // 短時間で復帰してここを通る。
+        wdt_reset();
+
         // マスタからの設定変 更リクエストを確認
-        if (I2C_Config_Update_Requested) 
+        if (I2C_Config_Update_Requested)
         {
             I2C_Config_Update_Requested = false;
 

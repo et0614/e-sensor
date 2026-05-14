@@ -78,11 +78,6 @@ int main(void)
 {
     SYSTEM_Initialize();
 
-    // ウォッチドッグ有効化（~4秒）。以降、main ループで wdt_reset() を必ず呼ぶこと。
-    // I2C / EEPROM 等のポーリング待ちがハングしても、この時間内に wdt_reset() に到達
-    // できなければ MCU が自動でリセットされる。
-    ccp_write_io((void *)&WDT.CTRLA, WDT_PERIOD_4KCLK_gc);
-
     // EEPROM読み込み
     EM_loadEEPROM();
     

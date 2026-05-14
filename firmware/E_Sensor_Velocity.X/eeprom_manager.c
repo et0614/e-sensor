@@ -9,6 +9,22 @@
 // AVR128DB32 EEPROM開始アドレス (定数として定義)
 #define EEPROM_BASE_ADDR  0x1400
 
+// EEPROM Busy 待ちの上限（反復回数）。EEPROM 1 バイト書き込みは実デバイス仕様で
+// 11 ms 程度。F_CPU = 24 MHz、空ループ 1 回あたり数 cycle で十分な余裕を持たせる。
+// WDT (4.1s) より十分短く、NVMCTRL がハングしても ISR / メインループから抜け出せる。
+#define EEPROM_WAIT_MAX_ITER  200000UL
+
+// EEPROM の完了待ち。タイムアウトしても返すだけで、呼出側には副作用を強要しない。
+static bool eeprom_wait_ready(void)
+{
+    uint32_t iter = 0;
+    while (EEPROM_IsBusy())
+    {
+        if (++iter > EEPROM_WAIT_MAX_ITER) return false;
+    }
+    return true;
+}
+
 // EEPROM全体のマップを定義（型定義のみ）
 typedef struct {
     uint8_t init_flag;      // 0x0000
@@ -43,21 +59,21 @@ static float last_coefficientB[5];
 static void write_eep_block(const void* src, uint16_t dst_addr, size_t size)
 {
     const uint8_t* pSrc = (const uint8_t*)src;
-    for (size_t i = 0; i < size; i++) {   
-        while(EEPROM_IsBusy());
+    for (size_t i = 0; i < size; i++) {
+        if (!eeprom_wait_ready()) return; // NVMCTRL ハング時は諦めて呼出側に返す
         if (EEPROM_Read(dst_addr + i) != pSrc[i])
         {
             //書き込み可能になるまで待機
-            while(EEPROM_IsBusy());
+            if (!eeprom_wait_ready()) return;
             //アトミックに書き込み実行
             ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
                 EEPROM_Write(dst_addr + i, pSrc[i]);
             }
         }
     }
-    
+
     //書き込みが完了したことを確認して処理を終える
-    while(EEPROM_IsBusy());
+    eeprom_wait_ready();
 }
 
 // ブロック読み込み
@@ -77,37 +93,38 @@ static void read_eep_block(void* dst, uint16_t src_addr, size_t size)
 void EM_loadEEPROM()
 {
     //初期化未了の場合
-    if (EEPROM_Read(ADDR_INIT_FLAG) != 'T') 
+    eeprom_wait_ready();
+    if (EEPROM_Read(ADDR_INIT_FLAG) != 'T')
     {
         //設定を初期化
         EM_resetEEPROM();
-        
+
         //初期化フラグ
-        while(EEPROM_IsBusy());
-        EEPROM_Write(ADDR_INIT_FLAG, 'T');
+        if (eeprom_wait_ready())
+            EEPROM_Write(ADDR_INIT_FLAG, 'T');
     }
-    
+
     //フィルターn数
-    while(EEPROM_IsBusy());
+    eeprom_wait_ready();
     SharedMemory.reg.filter_n = EEPROM_Read(ADDR_FILTER_NUMBER);
     last_filter_config = SharedMemory.reg.filter_n;
-        
+
     //係数Aをロード
     read_eep_block((void*)last_coefficientA, ADDR_COEF_A, sizeof(last_coefficientA));
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
         memcpy((void*)SharedMemory.reg.coefficientA, last_coefficientA, sizeof(last_coefficientA));
         SharedMemory.reg.crc_coefA = calc_crc8((void*)SharedMemory.reg.coefficientA, (uint8_t)sizeof(SharedMemory.reg.coefficientA));
     }
-    
+
     //係数Bをロード
     read_eep_block(last_coefficientB, ADDR_COEF_B, sizeof(last_coefficientB));
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
         memcpy((void*)SharedMemory.reg.coefficientB, last_coefficientB, sizeof(last_coefficientB));
         SharedMemory.reg.crc_coefB = calc_crc8((void*)SharedMemory.reg.coefficientB, (uint8_t)sizeof(SharedMemory.reg.coefficientB));
     }
-    
+
     //I2Cアドレス
-    while(EEPROM_IsBusy());
+    eeprom_wait_ready();
     SharedMemory.reg.i2c_address = EEPROM_Read(ADDR_I2C_ADDR);
     last_i2c_address = SharedMemory.reg.i2c_address;
 }
@@ -120,10 +137,10 @@ void EM_updateEEPROM()
     if(last_filter_config != SharedMemory.reg.filter_n)
     {
         last_filter_config = SharedMemory.reg.filter_n;
-        while(EEPROM_IsBusy());
-        EEPROM_Write(ADDR_FILTER_NUMBER, SharedMemory.reg.filter_n);
+        if (eeprom_wait_ready())
+            EEPROM_Write(ADDR_FILTER_NUMBER, SharedMemory.reg.filter_n);
     }
-    
+
     // 係数A
     float currentA[5];
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
@@ -135,7 +152,7 @@ void EM_updateEEPROM()
         write_eep_block(last_coefficientA, ADDR_COEF_A, sizeof(last_coefficientA));
         SharedMemory.reg.crc_coefA = calc_crc8((void*)last_coefficientA, (uint8_t)sizeof(last_coefficientA));
     }
-    
+
     //係数B
     float currentB[5];
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
@@ -147,21 +164,21 @@ void EM_updateEEPROM()
         write_eep_block(last_coefficientB, ADDR_COEF_B, sizeof(last_coefficientB));
         SharedMemory.reg.crc_coefB = calc_crc8((void*)last_coefficientB, (uint8_t)sizeof(last_coefficientB));
     }
-    
+
     //I2Cアドレス
     if(last_i2c_address != SharedMemory.reg.i2c_address)
     {
         last_i2c_address = SharedMemory.reg.i2c_address;
-        while(EEPROM_IsBusy());
-        EEPROM_Write(ADDR_I2C_ADDR, SharedMemory.reg.i2c_address);
+        if (eeprom_wait_ready())
+            EEPROM_Write(ADDR_I2C_ADDR, SharedMemory.reg.i2c_address);
     }
 }
 
 void EM_resetEEPROM()
 {
     //フィルターn数
-    while(EEPROM_IsBusy());
-    EEPROM_Write(ADDR_FILTER_NUMBER, DEFAULT_FILTER_CONFIG);
+    if (eeprom_wait_ready())
+        EEPROM_Write(ADDR_FILTER_NUMBER, DEFAULT_FILTER_CONFIG);
 
     //係数A
     float temp_defaults[5];
@@ -171,12 +188,12 @@ void EM_resetEEPROM()
 
     //係数B
     memcpy(temp_defaults, DEFAULT_COEF_B, sizeof(temp_defaults));
-    for(int i=0; i<5; i++) swap_float(&temp_defaults[i]); 
+    for(int i=0; i<5; i++) swap_float(&temp_defaults[i]);
     write_eep_block((const void*)temp_defaults, ADDR_COEF_B, sizeof(temp_defaults));
 
     //I2Cアドレス
-    while(EEPROM_IsBusy());
-    EEPROM_Write(ADDR_I2C_ADDR, DEFAULT_I2C_ADDRESS);
+    if (eeprom_wait_ready())
+        EEPROM_Write(ADDR_I2C_ADDR, DEFAULT_I2C_ADDRESS);
 }
 
 // </editor-fold>

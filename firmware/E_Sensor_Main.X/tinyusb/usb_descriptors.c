@@ -83,8 +83,8 @@ char const *string_desc_arr[] = {
     (const char[]) { 0x09, 0x04 }, // 0: English (0x0409)
     "Togashi Research Institute LLC",   // 1: Manufacturer
     "E-Sensor Module",                  // 2: Product
-    NULL,                           // 3: Serial (固定文字列または独自取得)
-    "E-Sensor",                         // 4: MIDI String
+    NULL,                           // 3: Serial (SIGROW から動的に生成)
+    NULL,                           // 4: MIDI Jack 名 (個体識別のため動的に生成)
 };
 
 static uint16_t _desc_str[32 + 1];
@@ -108,7 +108,8 @@ static uint16_t _desc_str[32 + 1];
 uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
   (void) langid;
     size_t chr_count;
-    char serial_buf[21]; // 10bytes * 2 + null
+    char serial_buf[9];        // 8 hex + null
+    char midi_name_buf[24];    // "E-Sensor " + 8 hex + null = 18 (slack 込み)
 
     if (index == 0) { // STRID_LANGID
         memcpy(&_desc_str[1], string_desc_arr[0], 2);
@@ -117,9 +118,17 @@ uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
         if (!(index < sizeof(string_desc_arr) / sizeof(string_desc_arr[0]))) return NULL;
 
         const char *str;
-        if (index == 3) { // Serial Number ID
+        if (index == 3) { // Serial Number: SIGROW.SERNUM0 の FNV1a hash (8桁hex)
             SERIAL_get_serial_string(serial_buf);
             str = serial_buf;
+        } else if (index == 4) { // MIDI Jack 名: "E-Sensor XXXXXXXX" で複数台識別
+            // Windows の MIDI ポート名はこの文字列に基づくため、デバイス毎に
+            // 異なる名前にすることで、同一 PC に複数台接続したときに
+            // 各ポートを安定して区別できる。
+            SERIAL_get_serial_string(serial_buf);
+            strcpy(midi_name_buf, "E-Sensor ");
+            strcat(midi_name_buf, serial_buf);
+            str = midi_name_buf;
         } else {
             str = string_desc_arr[index];
         }

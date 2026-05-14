@@ -34,6 +34,8 @@
 
 #include "../system.h"
 
+int8_t WDT_Initialize();
+
 void SYSTEM_Initialize(void)
 {
     CLOCK_Initialize();
@@ -41,6 +43,20 @@ void SYSTEM_Initialize(void)
     I2C0_Host_Initialize();
     TCA0_Initialize();
     NVM_Initialize();
+    WDT_Initialize();
     CPUINT_Initialize();
 }
+
+int8_t WDT_Initialize()
+{
+    //PERIOD 4K cycles (4.1s); WINDOW Off; 
+    ccp_write_io((void*)&(WDT.CTRLA),0xA);
+    
+    //LOCK disabled; 
+    ccp_write_io((void*)&(WDT.STATUS),0x0);
+    
+
+    return 0;
+}
+
 
