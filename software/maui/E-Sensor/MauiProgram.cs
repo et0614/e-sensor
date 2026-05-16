@@ -34,13 +34,10 @@ namespace E_Sensor
 #elif ANDROID
       builder.Services.AddSingleton<IMidiService, E_Sensor.Platforms.Android.AndroidMidiService>();
       builder.Services.AddSingleton<ILoggingService, E_Sensor.Platforms.Android.AndroidLoggingService>();
-#elif IOS || MACCATALYST
-      // MacCatalyst も Platforms/iOS/ 配下のファイルは MAUI SDK の既定で
-      // コンパイル対象になるため、iOS の CoreMIDI 実装をそのまま共有する。
+#elif IOS
       builder.Services.AddSingleton<IMidiService, E_Sensor.Platforms.iOS.IosMidiService>();
       builder.Services.AddSingleton<ILoggingService, E_Sensor.Platforms.iOS.IosLoggingService>();
 #endif
-
       //ViewModelとPageの依存関係を登録
       builder.Services.AddSingleton<MainViewModel>();
       builder.Services.AddTransient<MainPage>();

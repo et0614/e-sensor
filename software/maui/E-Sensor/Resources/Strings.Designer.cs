@@ -196,6 +196,15 @@ namespace E_Sensor.Resources {
         }
 
         /// <summary>
+        ///   Calibration Report に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string MaintCalibrationReport {
+            get {
+                return ResourceManager.GetString("MaintCalibrationReport", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   CO2 Conditioning (~22 s) に類似しているローカライズされた文字列を検索します。
         /// </summary>
         public static string MaintConditioning {

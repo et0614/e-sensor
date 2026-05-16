@@ -1,3 +1,5 @@
 <Solution>
-  <Project Path="E-Sensor/E-Sensor.csproj" />
+  <Project Path="E-Sensor/E-Sensor.csproj">
+    <Deploy Solution="Debug|*" />
+  </Project>
 </Solution>

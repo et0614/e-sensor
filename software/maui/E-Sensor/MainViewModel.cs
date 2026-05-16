@@ -191,12 +191,21 @@ public partial class MainViewModel : ObservableObject
     var page = Application.Current?.Windows.FirstOrDefault()?.Page;
     if (page == null) return;
 
+    // 校正レポート（外部 Web）はデバイス ID が取得できているときだけ提示する。
+    // 接続直後の CMD_ID_RES 受信前に開かれた場合は項目を出さない。
+    bool hasDeviceId = !string.IsNullOrEmpty(DeviceId) && DeviceId != "---";
+    var options = new List<string>
+    {
+      Resources.Strings.MaintConditioning,
+      Resources.Strings.MaintFactoryReset,
+    };
+    if (hasDeviceId) options.Add(Resources.Strings.MaintCalibrationReport);
+
     string action = await page.DisplayActionSheet(
         Resources.Strings.Maintenance,
         Resources.Strings.Cancel,
         destruction: null,
-        Resources.Strings.MaintConditioning,
-        Resources.Strings.MaintFactoryReset);
+        options.ToArray());
 
     if (action == Resources.Strings.MaintConditioning)
     {
@@ -222,6 +231,18 @@ public partial class MainViewModel : ObservableObject
       if (ok)
       {
         _midiService.SendSysEx(MidiCommands.CMD_CO2_RESET_REQ);
+      }
+    }
+    else if (hasDeviceId && action == Resources.Strings.MaintCalibrationReport)
+    {
+      var url = $"https://e-sensor.jp/calibration/viewer.html?id={DeviceId}";
+      try
+      {
+        await Browser.OpenAsync(url, BrowserLaunchMode.SystemPreferred);
+      }
+      catch (Exception)
+      {
+        // 既定ブラウザが無い等で開けない端末では何もしない。
       }
     }
   }
@@ -417,20 +438,26 @@ public partial class MainViewModel : ObservableObject
         UpdateUI();
       }
     }
-    // ID応答
+    // ID応答 (4 byte ハッシュ + 1 byte CRC)
     else if (data[1] == MidiCommands.CMD_ID_RES)
     {
+      if (payload.Length < 5) return;
+      var idBytes = payload.AsSpan(0, 4);
+      if (SensorParser.CalculateCrc8(idBytes) != payload[4]) return;
+      var idHex = BitConverter.ToString(idBytes.ToArray()).Replace("-", "");
       Application.Current?.Dispatcher.Dispatch(() => {
-        // 16進数表示
-        DeviceId = BitConverter.ToString(payload).Replace("-", "");
+        DeviceId = idHex;
       });
     }
-    // バージョン応答
+    // バージョン応答 (3 byte: メジャー.マイナー.リビジョン + 1 byte CRC)
     else if (data[1] == MidiCommands.CMD_VER_RES)
     {
+      if (payload.Length < 4) return;
+      var verBytes = payload.AsSpan(0, 3);
+      if (SensorParser.CalculateCrc8(verBytes) != payload[3]) return;
+      var verStr = $"{verBytes[0]}.{verBytes[1]}.{verBytes[2]}";
       Application.Current?.Dispatcher.Dispatch(() => {
-        // 3バイト（メジャー.マイナー.リビジョン）形式
-        FirmwareVersion = payload.Length >= 3 ? $"{payload[0]}.{payload[1]}.{payload[2]}" : "Unknown";
+        FirmwareVersion = verStr;
       });
     }
     // CO2 初期調整 開始通知
