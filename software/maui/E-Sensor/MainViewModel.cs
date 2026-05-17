@@ -80,11 +80,28 @@ public partial class MainViewModel : ObservableObject
   [NotifyCanExecuteChangedFor(nameof(ExportDataCommand))]
   [NotifyCanExecuteChangedFor(nameof(ToggleRecordCommand))]
   [NotifyCanExecuteChangedFor(nameof(OpenMaintenanceMenuCommand))]
+  [NotifyPropertyChangedFor(nameof(IsDeviceLive))]
   private bool _isDeviceConnected;
 
   /// <summary>計測データが新鮮か否か</summary>
+  /// <remarks>
+  /// バックグラウンド中に MIDI デバイスが抜かれた場合、OS から切断コールバックが
+  /// 配信されず IsDeviceConnected が古いまま残ることがある。これを補うため、
+  /// 各操作コマンドの CanExecute はデータ鮮度も併せて見るようにしている。
+  /// </remarks>
   [ObservableProperty]
+  [NotifyCanExecuteChangedFor(nameof(StartRecordCommand))]
+  [NotifyCanExecuteChangedFor(nameof(ToggleRecordCommand))]
+  [NotifyCanExecuteChangedFor(nameof(OpenMaintenanceMenuCommand))]
+  [NotifyPropertyChangedFor(nameof(IsDeviceLive))]
   private bool _isDataFresh = false;
+
+  /// <summary>UI 上「実質的に接続が生きているか」を表す合成状態</summary>
+  /// <remarks>
+  /// IsDeviceConnected はバックグラウンド中の切断を取りこぼすことがあるため、
+  /// 表示用インジケータ等は本プロパティを参照する。
+  /// </remarks>
+  public bool IsDeviceLive => IsDeviceConnected && IsDataFresh;
 
   /// <summary>デバイスID</summary>
   [ObservableProperty]
@@ -119,9 +136,14 @@ public partial class MainViewModel : ObservableObject
   /// <summary>最新の計測データ</summary>
   private SensorLogEntry? _latestEntry;
 
-  private bool CanStartRecord() => IsDeviceConnected && !IsRecording;
+  private bool CanStartRecord() => IsDeviceConnected && IsDataFresh && !IsRecording;
 
   private bool CanStopRecord() => IsDeviceConnected && IsRecording;
+
+  // 記録中ならデータが途切れても停止操作は許可する（操作不能で記録が継続する状況を避ける）
+  private bool CanToggleRecord() => CanStartRecord() || CanStopRecord();
+
+  private bool CanOpenMaintenance() => IsDeviceConnected && IsDataFresh;
 
   private bool CanExport() => RecordedCount > 0;
 
@@ -132,7 +154,7 @@ public partial class MainViewModel : ObservableObject
 
   #region コマンド定義
 
-  [RelayCommand(CanExecute = nameof(IsDeviceConnected))]
+  [RelayCommand(CanExecute = nameof(CanToggleRecord))]
   private async Task ToggleRecord()
   {
     if (IsRecording)
@@ -185,7 +207,7 @@ public partial class MainViewModel : ObservableObject
   /// （工場リセットは "RESET" の入力プロンプトによる二段階確認）の経路で
   /// 実行する。
   /// </remarks>
-  [RelayCommand(CanExecute = nameof(IsDeviceConnected))]
+  [RelayCommand(CanExecute = nameof(CanOpenMaintenance))]
   private async Task OpenMaintenanceMenu()
   {
     var page = Application.Current?.Windows.FirstOrDefault()?.Page;
@@ -579,6 +601,7 @@ public partial class MainViewModel : ObservableObject
 
     StartRecordCommand.NotifyCanExecuteChanged();
     StopRecordCommand.NotifyCanExecuteChanged();
+    ToggleRecordCommand.NotifyCanExecuteChanged();
   }
 
   #endregion
@@ -684,7 +707,14 @@ public partial class MainViewModel : ObservableObject
       _dogTimer?.Stop();
       IsDogVisible = false;
     }
-    else _dogTimer?.Start();
+    else
+    {
+      _dogTimer?.Start();
+      // 記録中にデータが途絶えたら自動で停止する。バックグラウンド中に
+      // ケーブルが抜かれた場合、復帰後も古い _latestEntry がコピーされ
+      // 続けるのを防ぐため。
+      if (IsRecording) StopRecord();
+    }
   }
 
   #endregion

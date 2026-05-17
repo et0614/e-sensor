@@ -77,10 +77,10 @@
                     <Label Text="CONNECTION" FontSize="10" FontAttributes="Bold" TextColor="#8E9AAF" VerticalOptions="Center" />
                     <Ellipse WidthRequest="12" HeightRequest="12" VerticalOptions="Center">
                         <Ellipse.Triggers>
-                            <DataTrigger TargetType="Ellipse" Binding="{Binding IsDeviceConnected}" Value="True">
+                            <DataTrigger TargetType="Ellipse" Binding="{Binding IsDeviceLive}" Value="True">
                                 <Setter Property="Fill" Value="#4CAF50" />
                             </DataTrigger>
-                            <DataTrigger TargetType="Ellipse" Binding="{Binding IsDeviceConnected}" Value="False">
+                            <DataTrigger TargetType="Ellipse" Binding="{Binding IsDeviceLive}" Value="False">
                                 <Setter Property="Fill" Value="#F44336" />
                             </DataTrigger>
                         </Ellipse.Triggers>
@@ -137,7 +137,7 @@
                             <TapGestureRecognizer Command="{Binding OpenMaintenanceMenuCommand}" />
                         </Image.GestureRecognizers>
                         <Image.Triggers>
-                            <DataTrigger TargetType="Image" Binding="{Binding IsDeviceConnected}" Value="False">
+                            <DataTrigger TargetType="Image" Binding="{Binding IsDeviceLive}" Value="False">
                                 <Setter Property="Opacity" Value="0.3" />
                                 <Setter Property="InputTransparent" Value="True" />
                             </DataTrigger>
