@@ -243,10 +243,48 @@ class ESensorClient:
         self._send_cmd(cmd)
 
 
+    @staticmethod
+    def _quantize_to_safe_float(value: float) -> float:
+        """
+        Main MCU (バージョン 1.0.0 まで) の is_valid_coef_array バグへの対策。
+
+        旧ファームウェアの受信側バリデーションが BE で受け取ったバイトを
+        誤って LE float として解釈し、|誤解釈値| > 1e30 を弾いてしまうため、
+        BE バイトの LSB バイト下位 7 ビットが 0x71-0x7F の値はサイレントに
+        書き込みが拒否される。本関数はその範囲を回避する最寄りの float に
+        丸める (最大ずれは数 ULP, 1e-6 相対程度)。
+
+        ファームウェア修正版 (>=1.0.1 想定) では不要だが、適用しても無害。
+        """
+        if not (value == value) or value in (float('inf'), float('-inf')):
+            return value  # NaN/Inf はそのまま (どのみち弾かれる)
+
+        be = struct.pack('>f', value)
+        if (be[3] & 0x7F) <= 0x70:
+            return value  # すでに安全
+
+        bits = struct.unpack('>I', be)[0]
+        # 上下に ±N ULP ずらして最初に安全になる値を返す
+        for delta in range(1, 17):
+            for try_bits in (bits + delta, bits - delta):
+                try_bytes = struct.pack('>I', try_bits & 0xFFFFFFFF)
+                if (try_bytes[3] & 0x7F) <= 0x70:
+                    return struct.unpack('>f', try_bytes)[0]
+        # 通常の浮動小数では到達しないはず
+        raise ValueError(f"Cannot find safe float near {value}")
+
+
     def write_coefficients(self, values: List[float], type_a: bool = True):
-        """係数(5つのfloat)を書き込む"""
+        """係数(5つのfloat)を書き込む
+
+        旧ファームウェア (Main MCU is_valid_coef_array のバグ) で
+        サイレントに弾かれる値を回避するため、各要素を自動的に
+        「安全な」最寄り float に量子化する。新ファームウェアでは
+        量子化は実質的に no-op (1e-6 相対以下の誤差) で害は無い。
+        """
+        safe_values = [self._quantize_to_safe_float(v) for v in values]
         cmd = self.CMD_A_RW if type_a else self.CMD_B_RW
-        payload = bytearray(struct.pack('>5f', *values)) # Big Endian
+        payload = bytearray(struct.pack('>5f', *safe_values)) # Big Endian
         payload.append(self._crc8(payload))
         self._send_cmd(cmd, payload)
 

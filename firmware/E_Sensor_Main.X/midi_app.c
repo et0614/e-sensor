@@ -16,7 +16,7 @@
 // バージョン
 #define VERSION_MAJOR (1)
 #define VERSION_MINOR (0)
-#define VERSION_REVISION (0)
+#define VERSION_REVISION (1)
 
 // 計測時間間隔 [msec]
 #define MEAS_CO2_SPAN (1000)
@@ -70,6 +70,18 @@ static bool is_valid_coef_array(const float *c, uint8_t n) {
         if (c[i] > 1.0e30f || c[i] < -1.0e30f) return false;
     }
     return true;
+}
+
+// Host (Python) から受信した係数バイト列はビッグエンディアンだが、Main MCU
+// (AVR) はリトルエンディアン。is_valid_coef_array は float として解釈して
+// レンジチェックを行うため、検証前に byte swap して LE 解釈と一致させる。
+// Velocity MCU 側は受信した BE バイトをそのまま保存し読出時に swap して
+// 計算するため、I2C 送信は元の BE バイトを使うこと。
+static inline void swap_float_bytes(float* f) {
+    uint8_t* p = (uint8_t*)f;
+    uint8_t t;
+    t = p[0]; p[0] = p[3]; p[3] = t;
+    t = p[1]; p[1] = p[2]; p[2] = t;
 }
 
 // 4bitニブル分割してパケット送信
@@ -128,8 +140,12 @@ static void decode_and_process_sysex(uint8_t* encoded_data, uint16_t len) {
             if (d_idx >= 21 && CRC_calc8(decoded, 20) == decoded[20]) {
                 // 型パニング回避: uint8_t 配列から float 配列へ memcpy で転送
                 memcpy(coef_tmp, decoded, 20);
-                if (is_valid_coef_array(coef_tmp, 5))
-                    VELS_writeCoefficients(coef_tmp, true);
+                // 検証用に byte swap した複製を作る (受信は BE, 検証は LE 解釈で行う)
+                float validation_tmp[5];
+                memcpy(validation_tmp, coef_tmp, 20);
+                for (uint8_t i = 0; i < 5; i++) swap_float_bytes(&validation_tmp[i]);
+                if (is_valid_coef_array(validation_tmp, 5))
+                    VELS_writeCoefficients(coef_tmp, true); // I2C には BE のまま送る
             }
             break;
 
@@ -141,8 +157,12 @@ static void decode_and_process_sysex(uint8_t* encoded_data, uint16_t len) {
         case CMD_COEF_B_DATA: // 係数B受信
             if (d_idx >= 21 && CRC_calc8(decoded, 20) == decoded[20]) {
                 memcpy(coef_tmp, decoded, 20);
-                if (is_valid_coef_array(coef_tmp, 5))
-                    VELS_writeCoefficients(coef_tmp, false);
+                // 検証用に byte swap した複製を作る (受信は BE, 検証は LE 解釈で行う)
+                float validation_tmp[5];
+                memcpy(validation_tmp, coef_tmp, 20);
+                for (uint8_t i = 0; i < 5; i++) swap_float_bytes(&validation_tmp[i]);
+                if (is_valid_coef_array(validation_tmp, 5))
+                    VELS_writeCoefficients(coef_tmp, false); // I2C には BE のまま送る
             }
             break;
 

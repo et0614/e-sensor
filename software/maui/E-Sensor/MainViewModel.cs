@@ -421,10 +421,11 @@ public partial class MainViewModel : ObservableObject
         Co2Level = "---";
       }
 
-      // 風速
+      // 風速 (保証レンジは 5.0 m/s まで。超過時はレンジオーバー表示)
       if (IsVelocityValid)
       {
-        Velocity = _latestEntry!.Vel.ToString("F2");
+        var vel = _latestEntry!.Vel;
+        Velocity = vel > 5.0 ? ">5.0" : vel.ToString("F2");
         Voltage = _latestEntry!.Volt.ToString("F3");
       }
       else if (!_hasValidDataReceived) Velocity = "---";
