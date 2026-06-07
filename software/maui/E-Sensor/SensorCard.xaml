@@ -1,6 +1,5 @@
 <ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:res="clr-namespace:E_Sensor.Resources"
              x:Class="E_Sensor.SensorCard"
              x:Name="this">
     <Border StrokeShape="RoundRectangle 12"
@@ -24,34 +23,29 @@
                        FontSize="14"
                        TextColor="Gray"
                        HorizontalOptions="Start" />
-                <Border Grid.Column="1"
-                        IsVisible="{Binding IsWarmup, Source={x:Reference this}}"
+                <!-- IsVisible / 値テキストの色は SensorCard.xaml.cs の UpdateBadgeVisuals() で
+                     BadgeText の空/非空に応じて切り替える。XAML 側では DataTrigger の Value=""
+                     比較が安定しないため code-behind で扱う。 -->
+                <Border x:Name="BadgeBorder"
+                        Grid.Column="1"
                         StrokeShape="RoundRectangle 4"
                         Stroke="#F39C12"
                         StrokeThickness="1"
                         BackgroundColor="#FEF5E7"
                         Padding="4,1"
                         VerticalOptions="Center">
-                    <Label Text="{x:Static res:Strings.WarmupBadge}"
+                    <Label Text="{Binding BadgeText, Source={x:Reference this}}"
                            FontSize="9"
                            FontAttributes="Bold"
                            TextColor="#B9770E" />
                 </Border>
             </Grid>
 
-            <Label Text="{Binding Value, Source={x:Reference this}}"
+            <Label x:Name="ValueLabel"
+                   Text="{Binding Value, Source={x:Reference this}}"
                    FontSize="36"
                    FontAttributes="Bold"
-                   HorizontalOptions="Center">
-                <Label.Triggers>
-                    <DataTrigger TargetType="Label" Binding="{Binding IsWarmup, Source={x:Reference this}}" Value="False">
-                        <Setter Property="TextColor" Value="#005A9E" />
-                    </DataTrigger>
-                    <DataTrigger TargetType="Label" Binding="{Binding IsWarmup, Source={x:Reference this}}" Value="True">
-                        <Setter Property="TextColor" Value="#B0B7BF" />
-                    </DataTrigger>
-                </Label.Triggers>
-            </Label>
+                   HorizontalOptions="Center" />
 
             <Label Text="{Binding Unit, Source={x:Reference this}}"
                    FontSize="12"

@@ -26,6 +26,18 @@ public partial class MainViewModel : ObservableObject
   /// <summary>CO2 センサのバイパス位相（起動・初期調整直後の固定値出力期間）[sec]</summary>
   private const int CO2_WARMUP_SECONDS = 20;
 
+  /// <summary>風速センサの白金抵抗予熱時間[sec]</summary>
+  /// <remarks>
+  /// Velocity サブ MCU のファームウェア (HEATING_MSEC = 5000ms) と合わせる。
+  /// 予熱中は計測値が更新されないが、Main MCU 側からは値は読み取れて見えるため、
+  /// アプリ接続時に同じ秒数だけ警告表示する。
+  /// </remarks>
+  private const int VELOCITY_WARMUP_SECONDS = 5;
+
+  /// <summary>初期調整完了通知のフェイルセーフタイムアウト[sec]</summary>
+  /// <remarks>本来は約 22 秒で完了通知が来るが、取りこぼし対策として余裕を持たせる。</remarks>
+  private const int CONDITIONING_TIMEOUT_SECONDS = 60;
+
   private const bool USE_DUMMY_DATA = false;
 
   #endregion
@@ -67,7 +79,44 @@ public partial class MainViewModel : ObservableObject
   /// この期間中は SensorCard 上に WARM-UP バッジを表示し、値を灰色で表示する。
   /// </remarks>
   [ObservableProperty]
+  [NotifyPropertyChangedFor(nameof(Co2BadgeText))]
   private bool _isCo2Warmup = false;
+
+  /// <summary>初期調整（コンディショニング）実行中か否か</summary>
+  /// <remarks>
+  /// CMD_CONDITIONING_START から CMD_CONDITIONING_DONE までの期間。
+  /// この間はファームウェアからの readMeasurement が NACK となり、温湿度・CO2 ともに
+  /// 直前の値が固定で表示されるため、全 3 カードに CONDITIONING バッジを出して
+  /// 「現在値は信頼できない」ことをユーザに示す。
+  /// </remarks>
+  [ObservableProperty]
+  [NotifyPropertyChangedFor(nameof(Co2BadgeText))]
+  [NotifyPropertyChangedFor(nameof(TempHumBadgeText))]
+  private bool _isConditioning = false;
+
+  /// <summary>CO2 カード用バッジ表示文字列（空文字列のとき非表示）</summary>
+  public string Co2BadgeText =>
+      IsConditioning ? Resources.Strings.ConditioningBadge :
+      IsCo2Warmup ? Resources.Strings.WarmupBadge :
+      string.Empty;
+
+  /// <summary>温度・湿度カード用バッジ表示文字列（空文字列のとき非表示）</summary>
+  public string TempHumBadgeText =>
+      IsConditioning ? Resources.Strings.ConditioningBadge : string.Empty;
+
+  /// <summary>風速が予熱中か否か（接続直後の 5 秒間）</summary>
+  /// <remarks>
+  /// 風速回路の白金抵抗が予熱中はサブ MCU が計測値を更新しないが、Main MCU の
+  /// VELS_readMeasurement は CRC 付きの 0 (= 旧値) を成功で読み取るため、MAUI 側
+  /// からは「正常データ」と区別がつかない。接続時に 5 秒間 WARM-UP を表示する。
+  /// </remarks>
+  [ObservableProperty]
+  [NotifyPropertyChangedFor(nameof(VelocityBadgeText))]
+  private bool _isVelocityWarmup = false;
+
+  /// <summary>風速カード用バッジ表示文字列（空文字列のとき非表示）</summary>
+  public string VelocityBadgeText =>
+      IsVelocityWarmup ? Resources.Strings.WarmupBadge : string.Empty;
 
   /// <summary>照度計測値が有効か否か</summary>
   [ObservableProperty]
@@ -138,6 +187,16 @@ public partial class MainViewModel : ObservableObject
 
   /// <summary>CO2 バイパス位相終了用タイマ</summary>
   private IDispatcherTimer? _co2WarmupTimer;
+
+  /// <summary>風速予熱終了用タイマ</summary>
+  private IDispatcherTimer? _velocityWarmupTimer;
+
+  /// <summary>初期調整のフェイルセーフ用タイマ</summary>
+  /// <remarks>
+  /// CMD_CONDITIONING_DONE を取りこぼした場合（バックグラウンドで MIDI 切断等）に、
+  /// CONDITIONING バッジが永続表示されないようにするための安全弁。
+  /// </remarks>
+  private IDispatcherTimer? _conditioningTimeoutTimer;
 
   /// <summary>ダミーデータ表示用タイマ</summary>
   private IDispatcherTimer? _dummyDataTimer;
@@ -284,6 +343,20 @@ public partial class MainViewModel : ObservableObject
     }
   }
 
+  /// <summary>プロジェクト Web サイトを既定ブラウザで開く</summary>
+  [RelayCommand]
+  private async Task OpenWebsite()
+  {
+    try
+    {
+      await Browser.OpenAsync("https://e-sensor.jp", BrowserLaunchMode.SystemPreferred);
+    }
+    catch (Exception)
+    {
+      // 既定ブラウザが無い等で開けない端末では何もしない。
+    }
+  }
+
   /// <summary>記録出力コマンド</summary>
   /// <returns></returns>
   [RelayCommand(CanExecute = nameof(CanExport))]
@@ -412,6 +485,26 @@ public partial class MainViewModel : ObservableObject
     {
       IsCo2Warmup = false;
     };
+
+    // 風速予熱管理タイマー（ワンショット）
+    _velocityWarmupTimer = dispatcher.CreateTimer();
+    _velocityWarmupTimer.Interval = TimeSpan.FromSeconds(VELOCITY_WARMUP_SECONDS);
+    _velocityWarmupTimer.IsRepeating = false;
+    _velocityWarmupTimer.Tick += (s, e) =>
+    {
+      IsVelocityWarmup = false;
+    };
+
+    // 初期調整フェイルセーフタイマー（ワンショット）
+    _conditioningTimeoutTimer = dispatcher.CreateTimer();
+    _conditioningTimeoutTimer.Interval = TimeSpan.FromSeconds(CONDITIONING_TIMEOUT_SECONDS);
+    _conditioningTimeoutTimer.IsRepeating = false;
+    _conditioningTimeoutTimer.Tick += (s, e) =>
+    {
+      // 完了通知を取りこぼしたとみなしてバッジを解除し、続けて 20 秒の warm-up に入る
+      IsConditioning = false;
+      StartCo2WarmupCountdown();
+    };
   }
 
   /// <summary>CO2 バイパス位相のカウントダウンを開始する（既存タイマは再起動される）</summary>
@@ -422,6 +515,41 @@ public partial class MainViewModel : ObservableObject
       _co2WarmupTimer?.Stop();
       IsCo2Warmup = true;
       _co2WarmupTimer?.Start();
+    });
+  }
+
+  /// <summary>風速予熱のカウントダウンを開始する（既存タイマは再起動される）</summary>
+  private void StartVelocityWarmupCountdown()
+  {
+    Application.Current?.Dispatcher.Dispatch(() =>
+    {
+      _velocityWarmupTimer?.Stop();
+      IsVelocityWarmup = true;
+      _velocityWarmupTimer?.Start();
+    });
+  }
+
+  /// <summary>初期調整中状態に入る（フェイルセーフタイマも起動）</summary>
+  private void BeginConditioning()
+  {
+    Application.Current?.Dispatcher.Dispatch(() =>
+    {
+      _conditioningTimeoutTimer?.Stop();
+      // 警告表示の優先度は CONDITIONING > WARM-UP のため、進行中の warm-up は一旦解除
+      _co2WarmupTimer?.Stop();
+      IsCo2Warmup = false;
+      IsConditioning = true;
+      _conditioningTimeoutTimer?.Start();
+    });
+  }
+
+  /// <summary>初期調整中状態を解除する</summary>
+  private void EndConditioning()
+  {
+    Application.Current?.Dispatcher.Dispatch(() =>
+    {
+      _conditioningTimeoutTimer?.Stop();
+      IsConditioning = false;
     });
   }
 
@@ -521,13 +649,16 @@ public partial class MainViewModel : ObservableObject
     // CO2 初期調整 開始通知
     else if (data[1] == MidiCommands.CMD_CONDITIONING_START)
     {
+      BeginConditioning();
       ShowMaintenanceNotice(Resources.Strings.ConditioningStarted);
     }
     // CO2 初期調整 完了通知
     else if (data[1] == MidiCommands.CMD_CONDITIONING_DONE)
     {
       // 初期調整完了直後はファームウェアが start_continuous_measurement を再送するため、
-      // データシート §1.1.4 のバイパス位相が再発生する。ユーザーへは 20 秒間 WARM-UP を表示。
+      // データシート §1.1.4 のバイパス位相が再発生する。CONDITIONING を解除して
+      // 20 秒間 WARM-UP に切り替える。
+      EndConditioning();
       StartCo2WarmupCountdown();
       ShowMaintenanceNotice(Resources.Strings.ConditioningDone);
     }
@@ -594,14 +725,18 @@ public partial class MainViewModel : ObservableObject
 
         // 接続直後はデバイスが起動直後である可能性が高い。STCC4 のバイパス位相中は
         // CO2 値が 390 ppm 固定となるため、安全側に倒して 20 秒間 WARM-UP を表示する。
+        // 風速回路も予熱 5 秒間は値が更新されないため、同様に WARM-UP を表示する。
         // 既に起動から十分時間が経過していた場合の不要な表示は許容する。
         StartCo2WarmupCountdown();
+        StartVelocityWarmupCountdown();
       }
       else
       {
         StopPolling();
         DeviceId = "---";
         FirmwareVersion = "---";
+        // 切断時はバッジ状態もリセット（再接続時に古い CONDITIONING が残らないように）
+        EndConditioning();
       }
     });
   }

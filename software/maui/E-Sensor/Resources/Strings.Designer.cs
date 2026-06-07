@@ -68,7 +68,7 @@ namespace E_Sensor.Resources {
                 return ResourceManager.GetString("Cancel", resourceCulture);
             }
         }
-
+        
         /// <summary>
         ///   CO2 Level に類似しているローカライズされた文字列を検索します。
         /// </summary>
@@ -77,16 +77,43 @@ namespace E_Sensor.Resources {
                 return ResourceManager.GetString("CO2Level", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   CONDITIONING に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string ConditioningBadge {
+            get {
+                return ResourceManager.GetString("ConditioningBadge", resourceCulture);
+            }
+        }
 
         /// <summary>
-        ///   During conditioning (about 22 seconds), CO2, temperature and humidity readings will all be unavailable. Continue? に類似しているローカライズされた文字列を検索します。
+        ///   CO2 conditioning complete. For approximately 20 seconds the CO2 reading will be held at 390 ppm (sensor specification). に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string ConditioningDone {
+            get {
+                return ResourceManager.GetString("ConditioningDone", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   CO2 conditioning started (about 22 seconds). に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string ConditioningStarted {
+            get {
+                return ResourceManager.GetString("ConditioningStarted", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   During conditioning (about 22 seconds), CO2, temperature and humidity readings will all be unavailable. For approximately 20 seconds after conditioning completes, the CO2 reading will be held at 390 ppm. Continue? に類似しているローカライズされた文字列を検索します。
         /// </summary>
         public static string ConfirmConditioningMsg {
             get {
                 return ResourceManager.GetString("ConfirmConditioningMsg", resourceCulture);
             }
         }
-
+        
         /// <summary>
         ///   Run CO2 Conditioning? に類似しているローカライズされた文字列を検索します。
         /// </summary>
@@ -95,7 +122,7 @@ namespace E_Sensor.Resources {
                 return ResourceManager.GetString("ConfirmConditioningTitle", resourceCulture);
             }
         }
-
+        
         /// <summary>
         ///   Reset the CO2 sensor to factory defaults? Auto-calibration will rebuild from fresh trend data. に類似しているローカライズされた文字列を検索します。
         /// </summary>
@@ -104,7 +131,7 @@ namespace E_Sensor.Resources {
                 return ResourceManager.GetString("ConfirmFactoryResetMsg", resourceCulture);
             }
         }
-
+        
         /// <summary>
         ///   CO2 Factory Reset に類似しているローカライズされた文字列を検索します。
         /// </summary>
@@ -113,7 +140,7 @@ namespace E_Sensor.Resources {
                 return ResourceManager.GetString("ConfirmFactoryResetTitle", resourceCulture);
             }
         }
-
+        
         /// <summary>
         ///   Existing data will be cleared. Start new logging? に類似しているローカライズされた文字列を検索します。
         /// </summary>
@@ -122,31 +149,13 @@ namespace E_Sensor.Resources {
                 return ResourceManager.GetString("ConfirmOverwrite", resourceCulture);
             }
         }
-
+        
         /// <summary>
         ///   Confirmation に類似しているローカライズされた文字列を検索します。
         /// </summary>
         public static string ConfirmTitle {
             get {
                 return ResourceManager.GetString("ConfirmTitle", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   CO2 conditioning complete. に類似しているローカライズされた文字列を検索します。
-        /// </summary>
-        public static string ConditioningDone {
-            get {
-                return ResourceManager.GetString("ConditioningDone", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   CO2 conditioning started (about 22 seconds). に類似しているローカライズされた文字列を検索します。
-        /// </summary>
-        public static string ConditioningStarted {
-            get {
-                return ResourceManager.GetString("ConditioningStarted", resourceCulture);
             }
         }
         
@@ -167,7 +176,7 @@ namespace E_Sensor.Resources {
                 return ResourceManager.GetString("ExportMessage", resourceCulture);
             }
         }
-
+        
         /// <summary>
         ///   CO2 sensor reset to factory defaults. に類似しているローカライズされた文字列を検索します。
         /// </summary>
@@ -176,7 +185,7 @@ namespace E_Sensor.Resources {
                 return ResourceManager.GetString("FactoryResetDone", resourceCulture);
             }
         }
-
+        
         /// <summary>
         ///   Illuminance に類似しているローカライズされた文字列を検索します。
         /// </summary>
@@ -194,7 +203,7 @@ namespace E_Sensor.Resources {
                 return ResourceManager.GetString("LoggingStatus", resourceCulture);
             }
         }
-
+        
         /// <summary>
         ///   Calibration Report に類似しているローカライズされた文字列を検索します。
         /// </summary>
@@ -203,7 +212,7 @@ namespace E_Sensor.Resources {
                 return ResourceManager.GetString("MaintCalibrationReport", resourceCulture);
             }
         }
-
+        
         /// <summary>
         ///   CO2 Conditioning (~22 s) に類似しているローカライズされた文字列を検索します。
         /// </summary>
@@ -212,16 +221,7 @@ namespace E_Sensor.Resources {
                 return ResourceManager.GetString("MaintConditioning", resourceCulture);
             }
         }
-
-        /// <summary>
-        ///   CO2 Factory Reset に類似しているローカライズされた文字列を検索します。
-        /// </summary>
-        public static string MaintFactoryReset {
-            get {
-                return ResourceManager.GetString("MaintFactoryReset", resourceCulture);
-            }
-        }
-
+        
         /// <summary>
         ///   Maintenance に類似しているローカライズされた文字列を検索します。
         /// </summary>
@@ -230,7 +230,16 @@ namespace E_Sensor.Resources {
                 return ResourceManager.GetString("Maintenance", resourceCulture);
             }
         }
-
+        
+        /// <summary>
+        ///   CO2 Factory Reset に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string MaintFactoryReset {
+            get {
+                return ResourceManager.GetString("MaintFactoryReset", resourceCulture);
+            }
+        }
+        
         /// <summary>
         ///   No に類似しているローカライズされた文字列を検索します。
         /// </summary>
@@ -302,7 +311,7 @@ namespace E_Sensor.Resources {
                 return ResourceManager.GetString("WarmupBadge", resourceCulture);
             }
         }
-
+        
         /// <summary>
         ///   Yes に類似しているローカライズされた文字列を検索します。
         /// </summary>

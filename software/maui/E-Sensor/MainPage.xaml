@@ -149,6 +149,19 @@
                     <Label Margin="10,0,0,0" Text="ID:" FontSize="10" TextColor="#8E9AAF" VerticalOptions="Center" />
                     <Label Text="{Binding DeviceId}" FontSize="10" TextColor="White" VerticalOptions="Center" />
                 </HorizontalStackLayout>
+
+                <!-- プロジェクト Web サイトへのリンク。情報量を抑えた控えめなテキストリンクとして
+                     配置し、タップで既定ブラウザを起動する。 -->
+                <Label Text="e-sensor.jp"
+                       FontSize="10"
+                       TextColor="#8E9AAF"
+                       TextDecorations="Underline"
+                       HorizontalOptions="End"
+                       Margin="0,2,0,0">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding OpenWebsiteCommand}" />
+                    </Label.GestureRecognizers>
+                </Label>
             </VerticalStackLayout>
 
         </VerticalStackLayout>
@@ -166,11 +179,11 @@
                     </DataTrigger>
                 </FlexLayout.Triggers>
 
-                <viewmodels:SensorCard Title="{x:Static res:Strings.Temperature}" Value="{Binding Temperature}" Unit="C" />
-                <viewmodels:SensorCard Title="{x:Static res:Strings.RelativeHumidity}" Value="{Binding Humidity}" Unit="%" />
-                <viewmodels:SensorCard Title="{x:Static res:Strings.Velocity}" Value="{Binding Velocity}" Unit="m/s" />
+                <viewmodels:SensorCard Title="{x:Static res:Strings.Temperature}" Value="{Binding Temperature}" Unit="C" BadgeText="{Binding TempHumBadgeText}" />
+                <viewmodels:SensorCard Title="{x:Static res:Strings.RelativeHumidity}" Value="{Binding Humidity}" Unit="%" BadgeText="{Binding TempHumBadgeText}" />
+                <viewmodels:SensorCard Title="{x:Static res:Strings.Velocity}" Value="{Binding Velocity}" Unit="m/s" BadgeText="{Binding VelocityBadgeText}" />
                 <viewmodels:SensorCard Title="{x:Static res:Strings.Illuminance}" Value="{Binding Illuminance}" Unit="lux" />
-                <viewmodels:SensorCard Title="{x:Static res:Strings.CO2Level}" Value="{Binding Co2Level}" Unit="ppm" IsWarmup="{Binding IsCo2Warmup}" />
+                <viewmodels:SensorCard Title="{x:Static res:Strings.CO2Level}" Value="{Binding Co2Level}" Unit="ppm" BadgeText="{Binding Co2BadgeText}" />
             </FlexLayout>
         </ScrollView>
 
