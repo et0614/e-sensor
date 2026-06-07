@@ -181,7 +181,7 @@
     <value>CO2 初期調整を実行しますか？</value>
   </data>
   <data name="ConfirmConditioningMsg" xml:space="preserve">
-    <value>初期調整中（約 22 秒）、CO2 に加えて温度・湿度も一時的に読み取れなくなります。続行しますか？</value>
+    <value>初期調整中（約 22 秒）、CO2 に加えて温度・湿度も一時的に読み取れなくなります。さらに完了後の約 20 秒間は CO2 値が 390 ppm 固定で表示されます（センサ仕様）。続行しますか？</value>
   </data>
   <data name="ConfirmFactoryResetTitle" xml:space="preserve">
     <value>CO2 工場出荷時リセット</value>
@@ -193,9 +193,12 @@
     <value>CO2 初期調整を開始しました（約 22 秒）。</value>
   </data>
   <data name="ConditioningDone" xml:space="preserve">
-    <value>CO2 初期調整が完了しました。</value>
+    <value>CO2 初期調整が完了しました。完了後の約 20 秒間は CO2 値が 390 ppm 固定で表示されます（センサ仕様）。</value>
   </data>
   <data name="FactoryResetDone" xml:space="preserve">
     <value>CO2 センサを工場出荷状態にリセットしました。</value>
+  </data>
+  <data name="WarmupBadge" xml:space="preserve">
+    <value>ウォームアップ中</value>
   </data>
 </root>

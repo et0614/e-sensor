@@ -11,6 +11,9 @@ public partial class SensorCard : ContentView
   public static readonly BindableProperty UnitProperty =
       BindableProperty.Create(nameof(Unit), typeof(string), typeof(SensorCard), string.Empty);
 
+  public static readonly BindableProperty IsWarmupProperty =
+      BindableProperty.Create(nameof(IsWarmup), typeof(bool), typeof(SensorCard), false);
+
   public string Title
   {
     get => (string)GetValue(TitleProperty);
@@ -27,6 +30,12 @@ public partial class SensorCard : ContentView
   {
     get => (string)GetValue(UnitProperty);
     set => SetValue(UnitProperty, value);
+  }
+
+  public bool IsWarmup
+  {
+    get => (bool)GetValue(IsWarmupProperty);
+    set => SetValue(IsWarmupProperty, value);
   }
 
   public SensorCard()

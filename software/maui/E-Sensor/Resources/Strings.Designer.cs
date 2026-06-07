@@ -295,6 +295,15 @@ namespace E_Sensor.Resources {
         }
         
         /// <summary>
+        ///   WARM-UP に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string WarmupBadge {
+            get {
+                return ResourceManager.GetString("WarmupBadge", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Yes に類似しているローカライズされた文字列を検索します。
         /// </summary>
         public static string Yes {

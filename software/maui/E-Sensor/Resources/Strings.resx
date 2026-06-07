@@ -181,7 +181,7 @@
     <value>Run CO2 Conditioning?</value>
   </data>
   <data name="ConfirmConditioningMsg" xml:space="preserve">
-    <value>During conditioning (about 22 seconds), CO2, temperature and humidity readings will all be unavailable. Continue?</value>
+    <value>During conditioning (about 22 seconds), CO2, temperature and humidity readings will all be unavailable. For approximately 20 seconds after conditioning completes, the CO2 reading will be held at 390 ppm (sensor specification). Continue?</value>
   </data>
   <data name="ConfirmFactoryResetTitle" xml:space="preserve">
     <value>CO2 Factory Reset</value>
@@ -193,9 +193,12 @@
     <value>CO2 conditioning started (about 22 seconds).</value>
   </data>
   <data name="ConditioningDone" xml:space="preserve">
-    <value>CO2 conditioning complete.</value>
+    <value>CO2 conditioning complete. For approximately 20 seconds the CO2 reading will be held at 390 ppm (sensor specification).</value>
   </data>
   <data name="FactoryResetDone" xml:space="preserve">
     <value>CO2 sensor reset to factory defaults.</value>
+  </data>
+  <data name="WarmupBadge" xml:space="preserve">
+    <value>WARM-UP</value>
   </data>
 </root>

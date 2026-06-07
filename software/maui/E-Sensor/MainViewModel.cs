@@ -23,6 +23,9 @@ public partial class MainViewModel : ObservableObject
   /// <summary>イースターエッグが出るまでの時間[sec]</summary>
   private const int EASTER_EGG_INTERVAL_SECONDS = 30;
 
+  /// <summary>CO2 センサのバイパス位相（起動・初期調整直後の固定値出力期間）[sec]</summary>
+  private const int CO2_WARMUP_SECONDS = 20;
+
   private const bool USE_DUMMY_DATA = false;
 
   #endregion
@@ -56,6 +59,15 @@ public partial class MainViewModel : ObservableObject
   /// <summary>CO2濃度[ppm]</summary>
   [ObservableProperty]
   private string _co2Level = "---";
+
+  /// <summary>CO2 がバイパス位相中（起動直後または初期調整完了後 20 秒間）か否か</summary>
+  /// <remarks>
+  /// STCC4 のデータシート §1.1.4 に記載のとおり、連続計測開始からの最初の 20 秒間は
+  /// CO2 値が 390 ppm 固定で出力される。ユーザーがこれを実測値と誤解しないよう、
+  /// この期間中は SensorCard 上に WARM-UP バッジを表示し、値を灰色で表示する。
+  /// </remarks>
+  [ObservableProperty]
+  private bool _isCo2Warmup = false;
 
   /// <summary>照度計測値が有効か否か</summary>
   [ObservableProperty]
@@ -123,6 +135,9 @@ public partial class MainViewModel : ObservableObject
 
   /// <summary>データ鮮度計算用タイマ</summary>
   private IDispatcherTimer? _freshnessTimer;
+
+  /// <summary>CO2 バイパス位相終了用タイマ</summary>
+  private IDispatcherTimer? _co2WarmupTimer;
 
   /// <summary>ダミーデータ表示用タイマ</summary>
   private IDispatcherTimer? _dummyDataTimer;
@@ -388,6 +403,26 @@ public partial class MainViewModel : ObservableObject
       IsDataFresh = false;
     };
     _freshnessTimer?.Start();
+
+    // CO2 バイパス位相管理タイマー（ワンショット）
+    _co2WarmupTimer = dispatcher.CreateTimer();
+    _co2WarmupTimer.Interval = TimeSpan.FromSeconds(CO2_WARMUP_SECONDS);
+    _co2WarmupTimer.IsRepeating = false;
+    _co2WarmupTimer.Tick += (s, e) =>
+    {
+      IsCo2Warmup = false;
+    };
+  }
+
+  /// <summary>CO2 バイパス位相のカウントダウンを開始する（既存タイマは再起動される）</summary>
+  private void StartCo2WarmupCountdown()
+  {
+    Application.Current?.Dispatcher.Dispatch(() =>
+    {
+      _co2WarmupTimer?.Stop();
+      IsCo2Warmup = true;
+      _co2WarmupTimer?.Start();
+    });
   }
 
 
@@ -491,6 +526,9 @@ public partial class MainViewModel : ObservableObject
     // CO2 初期調整 完了通知
     else if (data[1] == MidiCommands.CMD_CONDITIONING_DONE)
     {
+      // 初期調整完了直後はファームウェアが start_continuous_measurement を再送するため、
+      // データシート §1.1.4 のバイパス位相が再発生する。ユーザーへは 20 秒間 WARM-UP を表示。
+      StartCo2WarmupCountdown();
       ShowMaintenanceNotice(Resources.Strings.ConditioningDone);
     }
     // CO2 工場出荷時リセット 完了通知
@@ -553,6 +591,11 @@ public partial class MainViewModel : ObservableObject
         _midiService.SendSysEx(MidiCommands.CMD_START_MEAS);
         _midiService.SendSysEx(MidiCommands.CMD_ID_REQ);
         _midiService.SendSysEx(MidiCommands.CMD_VER_REQ);
+
+        // 接続直後はデバイスが起動直後である可能性が高い。STCC4 のバイパス位相中は
+        // CO2 値が 390 ppm 固定となるため、安全側に倒して 20 秒間 WARM-UP を表示する。
+        // 既に起動から十分時間が経過していた場合の不要な表示は許容する。
+        StartCo2WarmupCountdown();
       }
       else
       {

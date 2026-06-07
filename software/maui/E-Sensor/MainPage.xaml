@@ -170,7 +170,7 @@
                 <viewmodels:SensorCard Title="{x:Static res:Strings.RelativeHumidity}" Value="{Binding Humidity}" Unit="%" />
                 <viewmodels:SensorCard Title="{x:Static res:Strings.Velocity}" Value="{Binding Velocity}" Unit="m/s" />
                 <viewmodels:SensorCard Title="{x:Static res:Strings.Illuminance}" Value="{Binding Illuminance}" Unit="lux" />
-                <viewmodels:SensorCard Title="{x:Static res:Strings.CO2Level}" Value="{Binding Co2Level}" Unit="ppm" />
+                <viewmodels:SensorCard Title="{x:Static res:Strings.CO2Level}" Value="{Binding Co2Level}" Unit="ppm" IsWarmup="{Binding IsCo2Warmup}" />
             </FlexLayout>
         </ScrollView>
 
