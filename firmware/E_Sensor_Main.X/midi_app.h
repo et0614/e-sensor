@@ -41,6 +41,8 @@ extern "C" {
 #define CMD_REQ_CONDITIONING       0x17  // H->D: CO2初期調整命令
 #define CMD_CONDITIONING_START     0x18  // D->H: CO2初期調整開始通知
 #define CMD_CONDITIONING_DONE      0x19  // D->H: CO2初期調整完了通知
+#define CMD_START_VEL              0x1A  // H->D: 風速センサ起動命令（基板発熱を抑えるため、不要時に停止可能）
+#define CMD_STOP_VEL               0x1B  // H->D: 風速センサ停止命令
 
 #define SYSEX_MANUFACTURER_ID      0x7D  // 教育・開発用ID
 

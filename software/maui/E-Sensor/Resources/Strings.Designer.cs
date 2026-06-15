@@ -88,6 +88,42 @@ namespace E_Sensor.Resources {
         }
 
         /// <summary>
+        ///   CORRECTED に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CorrectedBadge {
+            get {
+                return ResourceManager.GetString("CorrectedBadge", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   About thermal correction に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CorrectionInfoTitle {
+            get {
+                return ResourceManager.GetString("CorrectionInfoTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   熱影響の補正説明文に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CorrectionInfoMsg {
+            get {
+                return ResourceManager.GetString("CorrectionInfoMsg", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Anemometer に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string VelocitySensor {
+            get {
+                return ResourceManager.GetString("VelocitySensor", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   CO2 conditioning complete. For approximately 20 seconds the CO2 reading will be held at 390 ppm (sensor specification). に類似しているローカライズされた文字列を検索します。
         /// </summary>
         public static string ConditioningDone {

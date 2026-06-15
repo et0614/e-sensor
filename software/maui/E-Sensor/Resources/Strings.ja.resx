@@ -204,4 +204,16 @@
   <data name="ConditioningBadge" xml:space="preserve">
     <value>初期調整中</value>
   </data>
+  <data name="CorrectedBadge" xml:space="preserve">
+    <value>補正値</value>
+  </data>
+  <data name="CorrectionInfoTitle" xml:space="preserve">
+    <value>熱影響の補正について</value>
+  </data>
+  <data name="CorrectionInfoMsg" xml:space="preserve">
+    <value>風速計の起動中は基板が発熱し、温度・湿度センサが熱の影響を受けます。表示値はこの影響をモデルで補正した推定値です。生の測定値を使うには風速計を OFF にしてください（On/Off 機能はハードウェア version 1.1 以降で利用できます）。</value>
+  </data>
+  <data name="VelocitySensor" xml:space="preserve">
+    <value>風速計</value>
+  </data>
 </root>

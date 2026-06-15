@@ -23,6 +23,8 @@ namespace E_Sensor
     public const byte CMD_CONDITIONING_REQ = 0x17; // H->D: CO2 初期調整要求
     public const byte CMD_CONDITIONING_START = 0x18; // D->H: CO2 初期調整開始通知
     public const byte CMD_CONDITIONING_DONE = 0x19; // D->H: CO2 初期調整完了通知
+    public const byte CMD_VEL_START = 0x1A; // H->D: 風速センサ起動 (ファーム v1.1.0+)
+    public const byte CMD_VEL_STOP = 0x1B; // H->D: 風速センサ停止 (ファーム v1.1.0+)
   }
 
   public interface IMidiService

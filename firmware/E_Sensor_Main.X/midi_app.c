@@ -15,8 +15,8 @@
 
 // バージョン
 #define VERSION_MAJOR (1)
-#define VERSION_MINOR (0)
-#define VERSION_REVISION (1)
+#define VERSION_MINOR (1)
+#define VERSION_REVISION (0)
 
 // 計測時間間隔 [msec]
 #define MEAS_CO2_SPAN (1000)
@@ -51,6 +51,10 @@ static uint32_t last_meas_ill = 0;
 
 // 現在の計測値
 static volatile SensorData_t current_data;
+
+// 風速センサ有効フラグ。起動時は ON（main.c 側で起動時に VELS_start を呼ぶのと整合）。
+// OFF 中は I2C 通信を伴う VELS_readMeasurement を発行せず、status bit2 を落とす。
+static bool velocity_enabled = true;
 
 // CO2センサの初期調整要求フラグ
 extern volatile bool conditioning_requested;
@@ -216,6 +220,21 @@ static void decode_and_process_sysex(uint8_t* encoded_data, uint16_t len) {
             
         case CMD_REQ_CONDITIONING: // CO2初期調整要求
             conditioning_requested = true;
+            break;
+
+        case CMD_START_VEL: // 風速センサ起動
+            if (VELS_start()) velocity_enabled = true;
+            break;
+
+        case CMD_STOP_VEL: // 風速センサ停止
+            if (VELS_stop())
+            {
+                velocity_enabled = false;
+                // 停止直後に古い読値が画面に残らないよう、計測値を 0 にしフラグを落とす
+                current_data.velocity = 0;
+                current_data.voltage  = 0;
+                current_data.status &= ~(1 << 2);
+            }
             break;
     }
 }
@@ -387,8 +406,13 @@ void MIDI_APP_Tasks(void) {
             }
         }
         
-        // 風速
-        if (MEAS_VEL_SPAN <= get_system_millis() - last_meas_vel)
+        // 風速。停止中は I2C を発行しない（Velocity MCU は PWR_DOWN で応答できず、
+        // 失敗扱いになるだけでなく I2C タイムアウトでメインループが詰まる）。
+        if (!velocity_enabled)
+        {
+            last_meas_vel = get_system_millis();
+        }
+        else if (MEAS_VEL_SPAN <= get_system_millis() - last_meas_vel)
         {
             uint16_t velocity;
             uint16_t voltage;
@@ -397,7 +421,7 @@ void MIDI_APP_Tasks(void) {
                 current_data.velocity = velocity;
                 current_data.voltage = voltage;
                 current_data.status |= (1 << 2);
-                
+
                 last_meas_vel = get_system_millis();
             }
             else
@@ -405,7 +429,7 @@ void MIDI_APP_Tasks(void) {
                 current_data.status &= ~(1 << 2); // 計測失敗
                 last_meas_vel += 10; // 10msec休んで再トライ
             }
-        }        
+        }
     }
 }
 

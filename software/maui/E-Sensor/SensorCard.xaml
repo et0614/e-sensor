@@ -23,22 +23,43 @@
                        FontSize="14"
                        TextColor="Gray"
                        HorizontalOptions="Start" />
-                <!-- IsVisible / 値テキストの色は SensorCard.xaml.cs の UpdateBadgeVisuals() で
-                     BadgeText の空/非空に応じて切り替える。XAML 側では DataTrigger の Value=""
-                     比較が安定しないため code-behind で扱う。 -->
-                <Border x:Name="BadgeBorder"
-                        Grid.Column="1"
-                        StrokeShape="RoundRectangle 4"
-                        Stroke="#F39C12"
-                        StrokeThickness="1"
-                        BackgroundColor="#FEF5E7"
-                        Padding="4,1"
-                        VerticalOptions="Center">
-                    <Label Text="{Binding BadgeText, Source={x:Reference this}}"
-                           FontSize="9"
-                           FontAttributes="Bold"
-                           TextColor="#B9770E" />
-                </Border>
+                <!-- バッジは2種類。いずれも IsVisible / 値テキスト色は code-behind の
+                     UpdateBadgeVisuals() で切り替える(DataTrigger の Value="" 比較が不安定なため)。
+                     ・BadgeBorder(警告/橙): WARM-UP・初期調整中など「値が信頼できない」表示。
+                       表示時は値を灰色化する。
+                     ・InfoBadgeBorder(情報/青): 「補正値」など正しい補正済み値の注記。
+                       値は灰色化せず、タップで説明ポップアップを出す。 -->
+                <HorizontalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center">
+                    <Border x:Name="InfoBadgeBorder"
+                            StrokeShape="RoundRectangle 4"
+                            Stroke="#5483AB"
+                            StrokeThickness="1"
+                            BackgroundColor="#EAF2FB"
+                            Padding="4,1"
+                            VerticalOptions="Center"
+                            IsVisible="False">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding InfoBadgeCommand, Source={x:Reference this}}" />
+                        </Border.GestureRecognizers>
+                        <Label Text="{Binding InfoBadgeText, Source={x:Reference this}}"
+                               FontSize="9"
+                               FontAttributes="Bold"
+                               TextColor="#2C5F8A" />
+                    </Border>
+                    <Border x:Name="BadgeBorder"
+                            StrokeShape="RoundRectangle 4"
+                            Stroke="#F39C12"
+                            StrokeThickness="1"
+                            BackgroundColor="#FEF5E7"
+                            Padding="4,1"
+                            VerticalOptions="Center"
+                            IsVisible="False">
+                        <Label Text="{Binding BadgeText, Source={x:Reference this}}"
+                               FontSize="9"
+                               FontAttributes="Bold"
+                               TextColor="#B9770E" />
+                    </Border>
+                </HorizontalStackLayout>
             </Grid>
 
             <Label x:Name="ValueLabel"

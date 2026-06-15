@@ -111,8 +111,20 @@
             </Button>
 
             <Button Text="{x:Static res:Strings.ExportMessage}"
-                    Command="{Binding ExportDataCommand}" 
+                    Command="{Binding ExportDataCommand}"
                     Style="{StaticResource ExportButtonStyle}" />
+
+            <!-- 風速計 On/Off トグル。ファーム v1.1.0 未満では無効化(灰色)される。
+                 ON のとき温湿度は自己発熱補正値を、OFF のとき生値を表示する。 -->
+            <HorizontalStackLayout Spacing="10" Margin="0,5,0,0" VerticalOptions="Center">
+                <Label Text="{x:Static res:Strings.VelocitySensor}"
+                       TextColor="White"
+                       FontSize="13"
+                       VerticalOptions="Center" />
+                <Switch IsToggled="{Binding IsVelocityOn}"
+                        IsEnabled="{Binding IsVelocityToggleSupported}"
+                        VerticalOptions="Center" />
+            </HorizontalStackLayout>
 
             <VerticalStackLayout VerticalOptions="End" Spacing="2" Margin="0,10,0,0">
                 <HorizontalStackLayout HorizontalOptions="End" Spacing="5" VerticalOptions="Center">
@@ -179,8 +191,8 @@
                     </DataTrigger>
                 </FlexLayout.Triggers>
 
-                <viewmodels:SensorCard Title="{x:Static res:Strings.Temperature}" Value="{Binding Temperature}" Unit="C" BadgeText="{Binding TempHumBadgeText}" />
-                <viewmodels:SensorCard Title="{x:Static res:Strings.RelativeHumidity}" Value="{Binding Humidity}" Unit="%" BadgeText="{Binding TempHumBadgeText}" />
+                <viewmodels:SensorCard Title="{x:Static res:Strings.Temperature}" Value="{Binding Temperature}" Unit="C" BadgeText="{Binding TempHumBadgeText}" InfoBadgeText="{Binding TempHumInfoBadgeText}" InfoBadgeCommand="{Binding ShowCorrectionInfoCommand}" />
+                <viewmodels:SensorCard Title="{x:Static res:Strings.RelativeHumidity}" Value="{Binding Humidity}" Unit="%" BadgeText="{Binding TempHumBadgeText}" InfoBadgeText="{Binding TempHumInfoBadgeText}" InfoBadgeCommand="{Binding ShowCorrectionInfoCommand}" />
                 <viewmodels:SensorCard Title="{x:Static res:Strings.Velocity}" Value="{Binding Velocity}" Unit="m/s" BadgeText="{Binding VelocityBadgeText}" />
                 <viewmodels:SensorCard Title="{x:Static res:Strings.Illuminance}" Value="{Binding Illuminance}" Unit="lux" />
                 <viewmodels:SensorCard Title="{x:Static res:Strings.CO2Level}" Value="{Binding Co2Level}" Unit="ppm" BadgeText="{Binding Co2BadgeText}" />

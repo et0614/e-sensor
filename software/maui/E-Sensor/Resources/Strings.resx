@@ -204,4 +204,16 @@
   <data name="ConditioningBadge" xml:space="preserve">
     <value>CONDITIONING</value>
   </data>
+  <data name="CorrectedBadge" xml:space="preserve">
+    <value>CORRECTED</value>
+  </data>
+  <data name="CorrectionInfoTitle" xml:space="preserve">
+    <value>About thermal correction</value>
+  </data>
+  <data name="CorrectionInfoMsg" xml:space="preserve">
+    <value>While the anemometer is running, the board heats up and the temperature/humidity sensor is affected. The displayed values are estimates corrected for this thermal influence using a model. To use the raw measured values, turn the anemometer off (the on/off feature is available on hardware version 1.1 and later).</value>
+  </data>
+  <data name="VelocitySensor" xml:space="preserve">
+    <value>Anemometer</value>
+  </data>
 </root>

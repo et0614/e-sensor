@@ -1,6 +1,7 @@
 import mido
 import struct
 import time
+import math
 from dataclasses import dataclass
 from typing import Optional, List, Callable, Tuple
 import datetime
@@ -18,6 +19,171 @@ class SensorData:
     ill_valid: bool    # Bit 0 (照度)
     env_valid: bool    # Bit 1 (温湿度・CO2)
     anemo_valid: bool  # Bit 2 (風速・電圧)
+    # 風速計自己発熱の温度補正(カルマンフィルタ)が有効な場合に、補正後の
+    # 空気温度推定値[℃]が入る。補正無効時や温湿度無効時は None。
+    # 生の temperature は補正に関わらずそのまま保持される。
+    corrected_temperature: Optional[float] = None
+    # 温度補正に伴って換算し直した相対湿度[%]。補正無効時や温湿度無効時は None。
+    # 生の humidity はそのまま保持される。
+    corrected_humidity: Optional[float] = None
+
+
+class ThermalParams:
+    """風速計の自己発熱による温度センサ熱影響モデルの定数。
+
+    資料「熱影響の補正方法」§3 の同定値。詳しい導出・手法比較・検証は
+    thermal_correction.py を参照（こちらは実機組み込み用に numpy 非依存で実装）。
+
+        CB dTB/dt = Q - K(v)(TB - Ta) ,  K(v) = A + B*v [mW/K]
+        定常: TB - Ta = Q/K(v)
+
+    K(v) は実機モデルの固定値を採用。基板まわりの強制対流は平板/バルク体的で、
+    熱線(細円柱)の King 則 √v ではなく風速の一次式の方が実測に合うため線形とした。
+    実使用では低風速の場面が多いため、切片 A(=無風時の伝熱係数) を無風実測値に固定。
+
+    offset_scale は定常オフセット(Q/K)に掛ける調整係数。校正時の TB-Ta を真の
+    平衡前に測ったため offset がやや過小だったので、当面 1.2 としてつじつまを
+    合わせる。平衡まで取り直して offset/K を再校正したら 1.0 に戻すこと。
+    (offset=Q/K のため、これは実効的に Q を 1.2 倍/ K を 1/1.2 倍するのと等価。
+     校正で Q はスケール自由なので、Q・A・B を触らず1係数で表現する。)
+    """
+
+    def __init__(self, Q: float = 50.0, CB: float = 1300.0, dt: float = 1.0,
+                 A: float = 11.058, B: float = 130.19, offset_scale: float = 1.2):
+        self.Q = Q          # トランジスタ発熱 [mW]
+        self.CB = CB        # 基板熱容量 [mJ/K]
+        self.dt = dt        # 既定サンプリング周期 [s]
+        self.A = A          # K(v) 切片(無風時) [mW/K] — 低風速重視で実測値に固定
+        self.B = B          # K(v) 風速係数 [mW/(K·(m/s))]
+        self.offset_scale = offset_scale  # 定常オフセット調整係数(再校正後は 1.0)
+
+    def K(self, v: float) -> float:
+        """伝熱係数 K(v) = A + B*v [mW/K]。"""
+        return max(1e-3, self.A + self.B * max(0.0, v))
+
+    def offset(self, v: float) -> float:
+        """定常自己発熱オフセット offset_scale·Q/K(v) [K]。"""
+        return self.offset_scale * self.Q / self.K(v)
+
+
+def _sat_vapor_pressure(t_celsius: float) -> float:
+    """飽和水蒸気圧 [hPa] (Magnus/WMO 近似, 0〜50℃で十分な精度)。"""
+    return 6.112 * math.exp(17.62 * t_celsius / (243.12 + t_celsius))
+
+
+def correct_relative_humidity(rh: float, t_measured: float, t_air: float) -> float:
+    """自己発熱で温度が変わったぶんの相対湿度補正。
+
+    水蒸気分圧 e は定圧では加熱しても保存される量とみなせる。センサは自分の温度
+    (基板温度 t_measured) での相対湿度を読むので e = RH_meas/100·esat(t_measured)。
+    真の空気温度 t_air での相対湿度は
+        RH_air = e/esat(t_air)·100 = RH_meas · esat(t_measured)/esat(t_air)
+    t_air < t_measured (基板加熱) なら RH は上方修正される。0〜100% にクランプ。
+    """
+    rh_corr = rh * _sat_vapor_pressure(t_measured) / _sat_vapor_pressure(t_air)
+    return max(0.0, min(100.0, rh_corr))
+
+
+class KalmanThermalCorrector:
+    """2状態カルマンフィルタ(資料 §4)による空気温度の推定。
+
+    状態 x=[TB, Ta] (基板温度, 空気温度)。基板温度 TB(センサ計測値) と風速 v
+    から、自己発熱の過渡をモデルで差し引いて空気温度 Ta を推定する。
+    MCU/軽量実行を想定し numpy 非依存(2x2 を手計算)。
+    """
+
+    def __init__(self, params: Optional[ThermalParams] = None,
+                 meas_std: float = 0.03,     # 観測(センサ)雑音 σ [K]
+                 air_std: float = 0.005,     # 空気温度の1ステップ変動 σ [K] (プロセス雑音)
+                 board_std: float = 0.002,   # 基板状態のモデル雑音 σ [K]
+                 init_air_std: float = 0.5,  # 起動時の空気温度の初期不確かさ σ [K]
+                 gate_abs: float = 2.0):     # 外れ値ゲート: 残差の許容上限 [K]
+        # air_std を小さくするほど補正後の揺れは小さくなる(平滑)が、真の空気温度
+        # 変化への追従は遅くなる。室内空気はゆるやかに変化するため小さめが良い。
+        # 基板の自己発熱リップル(対流/制御由来)は空気変動ではないので、小さい
+        # air_std で抑制するのが正しい。
+        self.p = params or ThermalParams()
+        self.R = meas_std ** 2
+        self.qb = board_std ** 2
+        self.qa = air_std ** 2
+        self.gate_abs = gate_abs
+        self._init_board_var = meas_std ** 2
+        self._init_air_var = init_air_std ** 2
+        self.reset()
+
+    def reset(self):
+        """フィルタ状態を初期化する。"""
+        self.xb: Optional[float] = None   # 基板温度状態
+        self.xa: Optional[float] = None   # 空気温度状態
+        # 誤差共分散 P (対称 2x2)。
+        # 接続開始時は「基板温度 ≒ 周囲空気温度 (自己発熱はこれから蓄積する)」と
+        # 分かっているため、空気状態の初期不確かさを小さく取る(コールドスタート前提)。
+        # こうしないと開始直後にフィルタが空気温度を過剰に引き下げ(基板はまだ昇温前
+        # なのに定常オフセット分を差し引こうとする)、推定値がストンと落ちてしまう。
+        # 自己発熱の立ち上がりはモデル(F の動特性)が時間をかけて表現する。
+        self.p00 = self._init_board_var
+        self.p01 = 0.0
+        self.p11 = self._init_air_var
+
+    def update(self, z: float, v: float, dt: Optional[float] = None,
+               heating: bool = True, measured: bool = True) -> Optional[float]:
+        """1サンプル進めて推定空気温度[℃]を返す。
+
+        z        : 基板温度(センサ計測値) [℃]
+        v        : 風速 [m/s]
+        dt       : 前回からの経過時間 [s] (None なら params.dt)
+        heating  : 風速計が稼働(自己発熱)中なら True。停止中は Q=0 として扱い、
+                   オフセットを与えず基板が空気温度へ冷える過程をモデル化する。
+        measured : 有効な温度観測があれば True。False(欠測=温度の読み取り失敗)の
+                   ときは観測を使わず予測ステップのみで状態を進める。これにより
+                   欠測時も補正値が途切れず連続する(z は無視される)。
+        """
+        if dt is None:
+            dt = self.p.dt
+        if self.xb is None:
+            # 初期化には有効な初回観測が必要
+            if not measured:
+                return None
+            # 起動直後は自己発熱前 → Ta ≈ TB とみなして初期化
+            self.xb = z
+            self.xa = z
+            return z
+
+        K = self.p.K(v)
+        E = math.exp(-K * dt / self.p.CB)
+        # 自己発熱オフセット(調整係数込み)。停止中は加熱なしで 0。
+        off = (self.p.offset_scale * self.p.Q / K) if heating else 0.0
+        c = 1.0 - E
+
+        # --- 予測:  x = F x + b ,  P = F P Fᵀ + Qw   (F=[[E,c],[0,1]]) ---
+        xb = E * self.xb + c * self.xa + c * off
+        xa = self.xa
+        m00 = E * self.p00 + c * self.p01
+        m01 = E * self.p01 + c * self.p11
+        m11 = self.p11
+        n00 = m00 * E + m01 * c + self.qb   # +Qw
+        n01 = m01
+        n11 = m11 + self.qa
+
+        # --- 更新:  e=z-Hx , S=HPHᵀ+R , g=PHᵀ/S , x+=g e , P=(I-gH)P  (H=[1,0]) ---
+        y = z - xb            # 残差 (H x = xb)
+        # 欠測(measured=False)、または外れ値(基板温度は時定数 ≫ dt のため dt 秒で
+        # 大きく跳ねない)の観測は使わず、予測のみを採用する。これで欠測・化け
+        # データがあっても補正値は連続したまま保たれる。
+        if (not measured) or abs(y) > self.gate_abs:
+            self.xb, self.xa = xb, xa
+            self.p00, self.p01, self.p11 = n00, n01, n11
+            return self.xa
+        S = n00 + self.R
+        g0 = n00 / S
+        g1 = n01 / S
+        self.xb = xb + g0 * y
+        self.xa = xa + g1 * y
+        self.p00 = (1.0 - g0) * n00
+        self.p01 = (1.0 - g0) * n01
+        self.p11 = n11 - g1 * n01
+        return self.xa
+
 
 class ESensorClient:
     # 定数定義
@@ -41,6 +207,8 @@ class ESensorClient:
     CMD_CONDITIONING_REQ   = 0x17  # CO2初期調整要求 (H->D)
     CMD_CONDITIONING_START = 0x18  # CO2初期調整開始通知 (D->H)
     CMD_CONDITIONING_DONE  = 0x19  # CO2初期調整完了通知 (D->H)
+    CMD_VEL_START          = 0x1A  # 風速センサ起動 (H->D)
+    CMD_VEL_STOP           = 0x1B  # 風速センサ停止 (H->D)
 
     def __init__(self, port_keyword: str = 'E-Sensor'):
         self.port_keyword = port_keyword
@@ -63,6 +231,11 @@ class ESensorClient:
         self._co2_reset_notified = False
         self._conditioning_start_notified = False
         self._conditioning_done_notified = False
+
+        # 風速計自己発熱の温度補正 (任意・既定は無効)
+        self.corrector: Optional[KalmanThermalCorrector] = None
+        self._velocity_on: bool = True       # 風速計の稼働状態 (電源投入時は ON)
+        self._last_corr_ts: Optional[float] = None
 
 
     def connect(self) -> bool:
@@ -131,7 +304,47 @@ class ESensorClient:
     def stop_measurement(self):
         """計測を停止させる"""
         self._send_cmd(self.CMD_STOP)
-    
+
+
+    def start_velocity(self):
+        """風速センサを起動する。起動後 約5秒の予熱を経て計測値が更新される。"""
+        self._velocity_on = True   # 加熱開始 (温度補正のオフセット計算に使用)
+        self._send_cmd(self.CMD_VEL_START)
+
+
+    def stop_velocity(self):
+        """風速センサを停止する。基板の発熱を抑え、温度/CO2 への熱影響を避けたい時に使う。
+        停止中は velocity/voltage は 0、anemo_valid は False になる。"""
+        self._velocity_on = False  # 加熱停止 (以降は自己発熱オフセット 0 で補正)
+        self._send_cmd(self.CMD_VEL_STOP)
+
+
+    # --- 温度補正 (風速計自己発熱) ---
+    def enable_thermal_correction(self, params: Optional[ThermalParams] = None,
+                                  meas_std: float = 0.03, air_std: float = 0.005,
+                                  init_air_std: float = 0.5, gate_abs: float = 2.0):
+        """風速計の自己発熱による温度センサ熱影響の補正を有効化する。
+
+        以降、受信した SensorData の corrected_temperature にカルマンフィルタで
+        推定した空気温度[℃]が、corrected_humidity にそれに合わせて換算し直した
+        相対湿度[%]が格納される。生の temperature / humidity はそのまま保持される。
+
+        air_std: 小さいほど補正後の揺れが小さく(平滑)なるが、真の空気温度変化への
+            追従は遅くなる。基板の自己発熱リップルを抑えるため小さめが良い。
+        init_air_std: 起動時の空気温度の初期不確かさ[K]。接続時は基板≒空気である
+            という前提を表し、小さいほど開始直後の推定が安定する(コールドスタート)。
+        gate_abs: 外れ値棄却の残差しきい値[K]。欠測・化けデータによるスパイクを防ぐ。
+        """
+        self.corrector = KalmanThermalCorrector(
+            params or ThermalParams(), meas_std=meas_std, air_std=air_std,
+            init_air_std=init_air_std, gate_abs=gate_abs)
+        self._last_corr_ts = None
+
+    def disable_thermal_correction(self):
+        """温度補正を無効化する (以降 corrected_temperature/humidity は None)。"""
+        self.corrector = None
+        self._last_corr_ts = None
+
 
     def request_data(self):
         """現在の計測値を送信するよう要求する"""
@@ -335,6 +548,29 @@ class ESensorClient:
                         env_valid=bool(status & (1 << 1)),   # Bit 1
                         anemo_valid=bool(status & (1 << 2))  # Bit 2
                     )
+                    # 風速計自己発熱の温度補正。生データには手を加えず、
+                    # corrected_temperature に推定空気温度を付与する。温度の欠測
+                    # (env_valid=False, STCC4 読み取り失敗で温度は前回値が保持される)
+                    # の時は観測を使わず予測のみで進め、補正値を途切れさせない。
+                    if self.corrector is not None:
+                        if data.anemo_valid:
+                            self._velocity_on = True  # 風速値が有効＝加熱中
+                        v = data.velocity if data.anemo_valid else 0.0
+                        v = min(30.0, max(0.0, v))    # 異常な風速値をクランプ
+                        if self._last_corr_ts is None:
+                            dt = self.corrector.p.dt
+                        else:
+                            dt = data.timestamp - self._last_corr_ts
+                            dt = min(10.0, max(0.05, dt))  # 異常な間隔をクランプ
+                        data.corrected_temperature = self.corrector.update(
+                            data.temperature, v, dt,
+                            heating=self._velocity_on, measured=data.env_valid)
+                        # 温度補正に伴い相対湿度も換算し直す (水蒸気分圧を保存)
+                        tc = data.corrected_temperature
+                        if tc is not None and data.env_valid:
+                            data.corrected_humidity = correct_relative_humidity(
+                                data.humidity, data.temperature, tc)
+                        self._last_corr_ts = data.timestamp
                     self._last_sensor_data = data # 同期用変数に保存
                     if self.on_data_received:
                         self.on_data_received(data)
@@ -410,28 +646,37 @@ if __name__ == "__main__":
 
             # 2. 計測開始
             client.start_measurement()
+            # 風速計自己発熱の温度補正を有効化 (生の Temp[C] と補正後 Tcorr[C] を併記)
+            client.enable_thermal_correction()
             print("Measurement Started. Press Ctrl+C to stop.\n")
 
             # ヘッダーの表示 (Flags列を追加)
             # L: Illuminance, E: Env(Temp/Hum/CO2), A: Anemometer(Vel/Vol)
-            print("Time     | Illum[lx] | Temp[C] | Hum[%] | Vel[m/s] | Vol[V] | CO2[ppm] | Flags")
-            print("---------|-----------|---------|--------|----------|--------|----------|-------")
-            
+            # Temp[C]=生データ, Tcorr[C]=熱影響補正後(KF), Hcorr[%]=補正後相対湿度
+            print("Time     | Illum[lx] | Temp[C] | Tcorr[C] | Hum[%] | Hcorr[%] | Vel[m/s] | Vol[V] | CO2[ppm] | Flags")
+            print("---------|-----------|---------|----------|--------|----------|----------|--------|----------|-------")
+
             while True:
                 # データをリクエストして取得
                 data = client.get_data(timeout=0.5)
-                
+
                 if data:
                     dt = datetime.datetime.fromtimestamp(data.timestamp)
                     time_str = dt.strftime('%H:%M:%S')
-                    
+
                     # フラグの可視化文字列を作成
                     f_ill = "L" if data.ill_valid else "-"
                     f_env = "E" if data.env_valid else "-"
                     f_ane = "A" if data.anemo_valid else "-"
                     flags_str = f"[{f_ill} {f_env} {f_ane}]"
-                    
-                    print(f"{time_str} | {data.illuminance:9.1f} | {data.temperature:7.2f} | {data.humidity:6.2f} | {data.velocity:8.2f} | {data.voltage:6.3f} | {data.co2:8d} | {flags_str}")
+
+                    # 補正後温度 (補正無効・温湿度無効時は None)
+                    tc = data.corrected_temperature
+                    tc_str = f"{tc:8.2f}" if tc is not None else "    --  "
+                    hc = data.corrected_humidity
+                    hc_str = f"{hc:8.2f}" if hc is not None else "    --  "
+
+                    print(f"{time_str} | {data.illuminance:9.1f} | {data.temperature:7.2f} | {tc_str} | {data.humidity:6.2f} | {hc_str} | {data.velocity:8.2f} | {data.voltage:6.3f} | {data.co2:8d} | {flags_str}")
                 else:
                     # 応答がない場合は警告を表示
                     print(f"{datetime.datetime.now().strftime('%H:%M:%S')} | No Response from device...")
