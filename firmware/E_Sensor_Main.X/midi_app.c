@@ -2,6 +2,7 @@
 #include "sensor_data.h"
 #include "crc.h"
 #include "tinyusb/tusb.h"
+#include "mcc_generated_files/system/pins.h" // VEL_PWR (PD3): 風速回路ロードスイッチ制御
 
 #include <string.h>
 #include <util/atomic.h>
@@ -16,7 +17,7 @@
 // バージョン
 #define VERSION_MAJOR (1)
 #define VERSION_MINOR (1)
-#define VERSION_REVISION (0)
+#define VERSION_REVISION (1)
 
 // 計測時間間隔 [msec]
 #define MEAS_CO2_SPAN (1000)
@@ -52,8 +53,9 @@ static uint32_t last_meas_ill = 0;
 // 現在の計測値
 static volatile SensorData_t current_data;
 
-// 風速センサ有効フラグ。起動時は ON（main.c 側で起動時に VELS_start を呼ぶのと整合）。
-// OFF 中は I2C 通信を伴う VELS_readMeasurement を発行せず、status bit2 を落とす。
+// 風速センサ有効フラグ。起動時は ON（VEL_PWR(PD3) も MCC 初期値 High で給電 ON）。
+// OFF 中は給電断（PD3 Low）のため、I2C 通信を伴う VELS_readMeasurement を発行せず、
+// status bit2 を落とす（給電断の風速 MCU を叩いて I2C タイムアウトで詰まるのを防ぐ）。
 static bool velocity_enabled = true;
 
 // CO2センサの初期調整要求フラグ
@@ -223,18 +225,21 @@ static void decode_and_process_sysex(uint8_t* encoded_data, uint16_t len) {
             break;
 
         case CMD_START_VEL: // 風速センサ起動
-            if (VELS_start()) velocity_enabled = true;
+            // PD3(VEL_PWR)=High でロードスイッチ(TPS22965, ON=アクティブHigh)を ON にし、
+            // 風速回路へ給電する。風速 MCU は起動時 enable=1 既定で自動的に計測再開する。
+            VEL_PWR_SetHigh();
+            velocity_enabled = true;
             break;
 
         case CMD_STOP_VEL: // 風速センサ停止
-            if (VELS_stop())
-            {
-                velocity_enabled = false;
-                // 停止直後に古い読値が画面に残らないよう、計測値を 0 にしフラグを落とす
-                current_data.velocity = 0;
-                current_data.voltage  = 0;
-                current_data.status &= ~(1 << 2);
-            }
+            // 先に計測ループの I2C 発行を止めてから給電を切る(給電断後の I2C ハング回避)。
+            velocity_enabled = false;
+            // PD3(VEL_PWR)=Low でロードスイッチを OFF にし、風速回路の発熱を止める。
+            VEL_PWR_SetLow();
+            // 停止直後に古い読値が画面に残らないよう、計測値を 0 にしフラグを落とす
+            current_data.velocity = 0;
+            current_data.voltage  = 0;
+            current_data.status &= ~(1 << 2);
             break;
     }
 }

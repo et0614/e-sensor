@@ -36,6 +36,7 @@
 
 static void (*IO_PA3_InterruptHandler)(void);
 static void (*IO_PA2_InterruptHandler)(void);
+static void (*VEL_PWR_InterruptHandler)(void);
 static void (*B_LED_InterruptHandler)(void);
 
 void PIN_MANAGER_Initialize()
@@ -44,13 +45,13 @@ void PIN_MANAGER_Initialize()
   /* OUT Registers Initialization */
     PORTA.OUT = 0x0;
     PORTC.OUT = 0x0;
-    PORTD.OUT = 0x0;
+    PORTD.OUT = 0x8;
     PORTF.OUT = 0x0;
 
   /* DIR Registers Initialization */
     PORTA.DIR = 0x0;
     PORTC.DIR = 0x0;
-    PORTD.DIR = 0x0;
+    PORTD.DIR = 0x8;
     PORTF.DIR = 0x10;
 
   /* PINxCTRL registers Initialization */
@@ -99,6 +100,7 @@ void PIN_MANAGER_Initialize()
   // register default ISC callback functions at runtime; use these methods to register a custom function
     IO_PA3_SetInterruptHandler(IO_PA3_DefaultInterruptHandler);
     IO_PA2_SetInterruptHandler(IO_PA2_DefaultInterruptHandler);
+    VEL_PWR_SetInterruptHandler(VEL_PWR_DefaultInterruptHandler);
     B_LED_SetInterruptHandler(B_LED_DefaultInterruptHandler);
 }
 
@@ -127,6 +129,19 @@ void IO_PA2_DefaultInterruptHandler(void)
 {
     // add your IO_PA2 interrupt custom code
     // or set custom function using IO_PA2_SetInterruptHandler()
+}
+/**
+  Allows selecting an interrupt handler for VEL_PWR at application runtime
+*/
+void VEL_PWR_SetInterruptHandler(void (* interruptHandler)(void)) 
+{
+    VEL_PWR_InterruptHandler = interruptHandler;
+}
+
+void VEL_PWR_DefaultInterruptHandler(void)
+{
+    // add your VEL_PWR interrupt custom code
+    // or set custom function using VEL_PWR_SetInterruptHandler()
 }
 /**
   Allows selecting an interrupt handler for B_LED at application runtime
@@ -164,6 +179,11 @@ ISR(PORTC_PORT_vect)
 
 ISR(PORTD_PORT_vect)
 { 
+    // Call the interrupt handler for the callback registered at runtime
+    if(VPORTD.INTFLAGS & PORT_INT3_bm)
+    {
+       VEL_PWR_InterruptHandler(); 
+    }
     /* Clear interrupt flags */
     VPORTD.INTFLAGS = 0xff;
 }

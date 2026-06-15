@@ -2,14 +2,14 @@
 
 manifest_file_version: 1.0.0
 project: E_Sensor_Main
-creation_date: 2026-05-03T11:22:17.066+09:00[Asia/Tokyo]
+creation_date: 2026-06-15T18:46:24.774+09:00[Asia/Tokyo]
 operating_system: Windows 11
 mcc_mode: IDE
-mcc_mode_version: v6.25
+mcc_mode_version: v6.30
 device_name: AVR64DU32
 compiler: XC8 3.10
-mcc_version: 5.6.3
-mcc_core_version: 5.8.3
+mcc_version: 5.6.4
+mcc_core_version: 5.8.4
 content_manager_version: 6.0.4
 is_mcc_offline: false
 is_using_prerelease_versions: false

@@ -76,6 +76,25 @@
 #define IO_PA2_EnableInterruptForLowLevelSensing() do { PORTA.PIN2CTRL = (PORTA.PIN2CTRL & ~PORT_ISC_gm) | 0x5 ; } while(0)
 #define PA2_SetInterruptHandler IO_PA2_SetInterruptHandler
 
+//get/set VEL_PWR aliases
+#define VEL_PWR_SetHigh() do { PORTD_OUTSET = 0x8; } while(0)
+#define VEL_PWR_SetLow() do { PORTD_OUTCLR = 0x8; } while(0)
+#define VEL_PWR_Toggle() do { PORTD_OUTTGL = 0x8; } while(0)
+#define VEL_PWR_GetValue() (VPORTD.IN & (0x1 << 3))
+#define VEL_PWR_SetDigitalInput() do { PORTD_DIRCLR = 0x8; } while(0)
+#define VEL_PWR_SetDigitalOutput() do { PORTD_DIRSET = 0x8; } while(0)
+#define VEL_PWR_SetPullUp() do { PORTD_PIN3CTRL  |= PORT_PULLUPEN_bm; } while(0)
+#define VEL_PWR_ResetPullUp() do { PORTD_PIN3CTRL  &= ~PORT_PULLUPEN_bm; } while(0)
+#define VEL_PWR_SetInverted() do { PORTD_PIN3CTRL  |= PORT_INVEN_bm; } while(0)
+#define VEL_PWR_ResetInverted() do { PORTD_PIN3CTRL  &= ~PORT_INVEN_bm; } while(0)
+#define VEL_PWR_DisableInterruptOnChange() do { PORTD.PIN3CTRL = (PORTD.PIN3CTRL & ~PORT_ISC_gm) | 0x0 ; } while(0)
+#define VEL_PWR_EnableInterruptForBothEdges() do { PORTD.PIN3CTRL = (PORTD.PIN3CTRL & ~PORT_ISC_gm) | 0x1 ; } while(0)
+#define VEL_PWR_EnableInterruptForRisingEdge() do { PORTD.PIN3CTRL = (PORTD.PIN3CTRL & ~PORT_ISC_gm) | 0x2 ; } while(0)
+#define VEL_PWR_EnableInterruptForFallingEdge() do { PORTD.PIN3CTRL = (PORTD.PIN3CTRL & ~PORT_ISC_gm) | 0x3 ; } while(0)
+#define VEL_PWR_DisableDigitalInputBuffer() do { PORTD.PIN3CTRL = (PORTD.PIN3CTRL & ~PORT_ISC_gm) | 0x4 ; } while(0)
+#define VEL_PWR_EnableInterruptForLowLevelSensing() do { PORTD.PIN3CTRL = (PORTD.PIN3CTRL & ~PORT_ISC_gm) | 0x5 ; } while(0)
+#define PD3_SetInterruptHandler VEL_PWR_SetInterruptHandler
+
 //get/set B_LED aliases
 #define B_LED_SetHigh() do { PORTF_OUTSET = 0x10; } while(0)
 #define B_LED_SetLow() do { PORTF_OUTCLR = 0x10; } while(0)
@@ -144,6 +163,27 @@ void IO_PA2_DefaultInterruptHandler(void);
  * @return none
  */
 void IO_PA2_SetInterruptHandler(void (* interruptHandler)(void)) ; 
+
+/**
+ * @ingroup  pinsdriver
+ * @brief Default Interrupt Handler for VEL_PWR pin. 
+ *        This is a predefined interrupt handler to be used together with the VEL_PWR_SetInterruptHandler() method.
+ *        This handler is called every time the VEL_PWR ISR is executed. 
+ * @pre PIN_MANAGER_Initialize() has been called at least once
+ * @param none
+ * @return none
+ */
+void VEL_PWR_DefaultInterruptHandler(void);
+
+/**
+ * @ingroup  pinsdriver
+ * @brief Interrupt Handler Setter for VEL_PWR pin input-sense-config functionality.
+ *        Allows selecting an interrupt handler for VEL_PWR at application runtime
+ * @pre PIN_MANAGER_Initialize() has been called at least once
+ * @param InterruptHandler function pointer.
+ * @return none
+ */
+void VEL_PWR_SetInterruptHandler(void (* interruptHandler)(void)) ; 
 
 /**
  * @ingroup  pinsdriver
