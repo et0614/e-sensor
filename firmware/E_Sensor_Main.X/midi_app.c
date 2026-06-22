@@ -52,11 +52,11 @@ static uint32_t last_meas_ill = 0;
 // 現在の計測値
 static volatile SensorData_t current_data;
 
-// 風速センサ有効フラグ。起動時は ON（main.c の VELS_start() で enable=1 を送信）。
+// 風速センサ有効フラグ。起動時は OFF（main.c の VELS_stop() で enable=0 を送信）。
 // 5V回路の入切は Velocity MCU 側の PD3(→TPS22965) が enable レジスタに従って行う。
-// OFF 中は Velocity MCU が PWR_DOWN に入り I2C に応答できないため、VELS_readMeasurement
-// を発行せず status bit2 を落とす（応答のない風速 MCU を叩いて I2C で詰まるのを防ぐ）。
-static bool velocity_enabled = true;
+// OFF 中は風速回路が無給電で計測値が無い（読んでも 0/旧値）ため、VELS_readMeasurement
+// を発行せず status bit2 を落とす。On はホストからの CMD_START_VEL で開始する。
+static bool velocity_enabled = false;
 
 // CO2センサの初期調整要求フラグ
 extern volatile bool conditioning_requested;

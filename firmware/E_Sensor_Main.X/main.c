@@ -84,7 +84,7 @@ int main(void)
     // センサ初期化
     STCC4_initialize();
     OPT3001_Initialize();
-    VELS_start();
+    VELS_stop(); // 起動時は風速計OFF（5V遮断）を明示。On はホストからの指令で行う
     
     // STCC4は初回起動時のみ工場出荷状態に初期化
     if(EM_Is_First_Run)

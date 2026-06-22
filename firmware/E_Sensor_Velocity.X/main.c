@@ -237,7 +237,7 @@ int main(void)
     
     // デフォルトの設定
     SharedMemory.reg.version = VERSION_NUMBER;
-    SharedMemory.reg.enable = 1;
+    SharedMemory.reg.enable = 0; // 起動時は風速計OFF（5V遮断）。Main からの起動指令で開始する
     SharedMemory.reg.updated = 0;
     memcpy((void*)SharedMemory.reg.id, (const void*)&SIGROW.SERNUM0, 16); // AVR製造IDをコピー
     SharedMemory.reg.id_crc = calc_crc8((uint8_t*)SharedMemory.reg.id, 16);
