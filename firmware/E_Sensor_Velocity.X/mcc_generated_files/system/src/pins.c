@@ -39,6 +39,7 @@ static void (*IO_PC2_InterruptHandler)(void);
 static void (*IO_PF5_InterruptHandler)(void);
 static void (*R_LED_InterruptHandler)(void);
 static void (*SLP_InterruptHandler)(void);
+static void (*IO_PF4_InterruptHandler)(void);
 
 void PIN_MANAGER_Initialize()
 {
@@ -52,7 +53,7 @@ void PIN_MANAGER_Initialize()
   /* DIR Registers Initialization */
     PORTA.DIR = 0x8;
     PORTC.DIR = 0x0;
-    PORTD.DIR = 0x0;
+    PORTD.DIR = 0x8;
     PORTF.DIR = 0x10;
 
   /* PINxCTRL registers Initialization */
@@ -107,6 +108,7 @@ void PIN_MANAGER_Initialize()
     IO_PF5_SetInterruptHandler(IO_PF5_DefaultInterruptHandler);
     R_LED_SetInterruptHandler(R_LED_DefaultInterruptHandler);
     SLP_SetInterruptHandler(SLP_DefaultInterruptHandler);
+    IO_PF4_SetInterruptHandler(IO_PF4_DefaultInterruptHandler);
 }
 
 /**
@@ -174,6 +176,19 @@ void SLP_DefaultInterruptHandler(void)
     // add your SLP interrupt custom code
     // or set custom function using SLP_SetInterruptHandler()
 }
+/**
+  Allows selecting an interrupt handler for IO_PF4 at application runtime
+*/
+void IO_PF4_SetInterruptHandler(void (* interruptHandler)(void)) 
+{
+    IO_PF4_InterruptHandler = interruptHandler;
+}
+
+void IO_PF4_DefaultInterruptHandler(void)
+{
+    // add your IO_PF4 interrupt custom code
+    // or set custom function using IO_PF4_SetInterruptHandler()
+}
 ISR(PORTA_PORT_vect)
 { 
     // Call the interrupt handler for the callback registered at runtime
@@ -202,6 +217,11 @@ ISR(PORTC_PORT_vect)
 
 ISR(PORTD_PORT_vect)
 { 
+    // Call the interrupt handler for the callback registered at runtime
+    if(VPORTD.INTFLAGS & PORT_INT3_bm)
+    {
+       SLP_InterruptHandler(); 
+    }
     /* Clear interrupt flags */
     VPORTD.INTFLAGS = 0xff;
 }
@@ -215,7 +235,7 @@ ISR(PORTF_PORT_vect)
     }
     if(VPORTF.INTFLAGS & PORT_INT4_bm)
     {
-       SLP_InterruptHandler(); 
+       IO_PF4_InterruptHandler(); 
     }
     /* Clear interrupt flags */
     VPORTF.INTFLAGS = 0xff;

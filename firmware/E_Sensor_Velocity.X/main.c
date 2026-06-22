@@ -26,7 +26,7 @@
 
 // <editor-fold defaultstate="collapsed" desc="定数宣言">
 
-#define VERSION_NUMBER  (1)
+#define VERSION_NUMBER  (2)
 
 #define HEATING_MSEC    (5000)  //立ち上げのための白金抵抗予熱時間[msec]
 
@@ -248,9 +248,12 @@ int main(void)
     SharedMemory.reg.id_hash[3] = (uint8_t)(hash & 0xFF);
     SharedMemory.reg.id_hash_crc = calc_crc8((uint8_t*)SharedMemory.reg.id_hash, 4);
     
-     //風速回路起動
-    SLP_SetHigh();
-    
+    // 風速回路の5V電源制御（SLP = PD3 → TPS22965 ON ピン, Active High）。
+    // High で5Vを供給して風速回路ON、Low で5Vを遮断してOFF（自己発熱を停止）。
+    // 起動直後は enable=1 のため5Vを供給して白金抵抗の予熱を開始する。
+    if (SharedMemory.reg.enable) SLP_SetHigh();
+    else SLP_SetLow();
+
     // イベントハンドラ登録
     RTC_SetOVFIsrCallback(msecHandler);
     
@@ -280,18 +283,19 @@ int main(void)
         {
             I2C_Config_Update_Requested = false;
 
-            // スリープ状態変更
+            // Main からのスリープ/起動指令（enable レジスタ）に応じて
+            // 風速回路の5V電源（PD3 → TPS22965 ON, Active High）を切り替える
             if (prev_enabled != SharedMemory.reg.enable)
             {
                 if(SharedMemory.reg.enable == 1)
-                {                    
-                    // 5V回路起動
+                {
+                    // 5V回路起動（PD3=High → TPS22965 ON）
                     SLP_SetHigh();
-                    
-                    // 立ち上げ時間をリセット
+
+                    // 再給電直後は白金抵抗が冷えているため予熱時間をリセット
                     heating_timer = HEATING_MSEC;
                 }
-                // 5V回路停止
+                // 5V回路停止（PD3=Low → TPS22965 OFF、自己発熱を停止）
                 else SLP_SetLow();
                 
                 // 状態を保存
@@ -375,9 +379,15 @@ int main(void)
             //DEBUG*****
         }
         
-        // スリープモードを選択して実行
-        if(SharedMemory.reg.enable == 1 || I2C_Is_Busy || 0 < I2C_KeepAlive_Ticks) set_sleep_mode(SLEEP_MODE_IDLE);
-        else set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+        // スリープモードは常に IDLE とする。
+        // 停止中(enable=0)に PWR_DOWN へ入れると RTC が停止して msecHandler が来ず、
+        // メインループが回らないため wdt_reset() を呼べない。WDT(FUSE 4.1s)が有効だと
+        // 約4秒でWDTリセットがかかり、再起動時に enable=1(既定)へ戻って 5V(PD3) が
+        // 復活してしまう（OFF にしても数秒で給電が戻る不具合）。IDLE なら RTC 割込で
+        // 20ms 毎に起床して WDT をキックし続けるため、enable=0(PD3 Low, 5V OFF) を
+        // 保持できる。発熱源である 5V 回路は PD3 で遮断済みのため目的は達成される。
+        // ※さらに深い省電力(PWR_DOWN)が必要なら FUSE で WDT を無効化する必要がある。
+        set_sleep_mode(SLEEP_MODE_IDLE);
         sleep_mode();
     }    
 }

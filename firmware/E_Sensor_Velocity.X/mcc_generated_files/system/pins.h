@@ -115,23 +115,42 @@
 #define PA3_SetInterruptHandler R_LED_SetInterruptHandler
 
 //get/set SLP aliases
-#define SLP_SetHigh() do { PORTF_OUTSET = 0x10; } while(0)
-#define SLP_SetLow() do { PORTF_OUTCLR = 0x10; } while(0)
-#define SLP_Toggle() do { PORTF_OUTTGL = 0x10; } while(0)
-#define SLP_GetValue() (VPORTF.IN & (0x1 << 4))
-#define SLP_SetDigitalInput() do { PORTF_DIRCLR = 0x10; } while(0)
-#define SLP_SetDigitalOutput() do { PORTF_DIRSET = 0x10; } while(0)
-#define SLP_SetPullUp() do { PORTF_PIN4CTRL  |= PORT_PULLUPEN_bm; } while(0)
-#define SLP_ResetPullUp() do { PORTF_PIN4CTRL  &= ~PORT_PULLUPEN_bm; } while(0)
-#define SLP_SetInverted() do { PORTF_PIN4CTRL  |= PORT_INVEN_bm; } while(0)
-#define SLP_ResetInverted() do { PORTF_PIN4CTRL  &= ~PORT_INVEN_bm; } while(0)
-#define SLP_DisableInterruptOnChange() do { PORTF.PIN4CTRL = (PORTF.PIN4CTRL & ~PORT_ISC_gm) | 0x0 ; } while(0)
-#define SLP_EnableInterruptForBothEdges() do { PORTF.PIN4CTRL = (PORTF.PIN4CTRL & ~PORT_ISC_gm) | 0x1 ; } while(0)
-#define SLP_EnableInterruptForRisingEdge() do { PORTF.PIN4CTRL = (PORTF.PIN4CTRL & ~PORT_ISC_gm) | 0x2 ; } while(0)
-#define SLP_EnableInterruptForFallingEdge() do { PORTF.PIN4CTRL = (PORTF.PIN4CTRL & ~PORT_ISC_gm) | 0x3 ; } while(0)
-#define SLP_DisableDigitalInputBuffer() do { PORTF.PIN4CTRL = (PORTF.PIN4CTRL & ~PORT_ISC_gm) | 0x4 ; } while(0)
-#define SLP_EnableInterruptForLowLevelSensing() do { PORTF.PIN4CTRL = (PORTF.PIN4CTRL & ~PORT_ISC_gm) | 0x5 ; } while(0)
-#define PF4_SetInterruptHandler SLP_SetInterruptHandler
+#define SLP_SetHigh() do { PORTD_OUTSET = 0x8; } while(0)
+#define SLP_SetLow() do { PORTD_OUTCLR = 0x8; } while(0)
+#define SLP_Toggle() do { PORTD_OUTTGL = 0x8; } while(0)
+#define SLP_GetValue() (VPORTD.IN & (0x1 << 3))
+#define SLP_SetDigitalInput() do { PORTD_DIRCLR = 0x8; } while(0)
+#define SLP_SetDigitalOutput() do { PORTD_DIRSET = 0x8; } while(0)
+#define SLP_SetPullUp() do { PORTD_PIN3CTRL  |= PORT_PULLUPEN_bm; } while(0)
+#define SLP_ResetPullUp() do { PORTD_PIN3CTRL  &= ~PORT_PULLUPEN_bm; } while(0)
+#define SLP_SetInverted() do { PORTD_PIN3CTRL  |= PORT_INVEN_bm; } while(0)
+#define SLP_ResetInverted() do { PORTD_PIN3CTRL  &= ~PORT_INVEN_bm; } while(0)
+#define SLP_DisableInterruptOnChange() do { PORTD.PIN3CTRL = (PORTD.PIN3CTRL & ~PORT_ISC_gm) | 0x0 ; } while(0)
+#define SLP_EnableInterruptForBothEdges() do { PORTD.PIN3CTRL = (PORTD.PIN3CTRL & ~PORT_ISC_gm) | 0x1 ; } while(0)
+#define SLP_EnableInterruptForRisingEdge() do { PORTD.PIN3CTRL = (PORTD.PIN3CTRL & ~PORT_ISC_gm) | 0x2 ; } while(0)
+#define SLP_EnableInterruptForFallingEdge() do { PORTD.PIN3CTRL = (PORTD.PIN3CTRL & ~PORT_ISC_gm) | 0x3 ; } while(0)
+#define SLP_DisableDigitalInputBuffer() do { PORTD.PIN3CTRL = (PORTD.PIN3CTRL & ~PORT_ISC_gm) | 0x4 ; } while(0)
+#define SLP_EnableInterruptForLowLevelSensing() do { PORTD.PIN3CTRL = (PORTD.PIN3CTRL & ~PORT_ISC_gm) | 0x5 ; } while(0)
+#define PD3_SetInterruptHandler SLP_SetInterruptHandler
+
+//get/set IO_PF4 aliases
+#define IO_PF4_SetHigh() do { PORTF_OUTSET = 0x10; } while(0)
+#define IO_PF4_SetLow() do { PORTF_OUTCLR = 0x10; } while(0)
+#define IO_PF4_Toggle() do { PORTF_OUTTGL = 0x10; } while(0)
+#define IO_PF4_GetValue() (VPORTF.IN & (0x1 << 4))
+#define IO_PF4_SetDigitalInput() do { PORTF_DIRCLR = 0x10; } while(0)
+#define IO_PF4_SetDigitalOutput() do { PORTF_DIRSET = 0x10; } while(0)
+#define IO_PF4_SetPullUp() do { PORTF_PIN4CTRL  |= PORT_PULLUPEN_bm; } while(0)
+#define IO_PF4_ResetPullUp() do { PORTF_PIN4CTRL  &= ~PORT_PULLUPEN_bm; } while(0)
+#define IO_PF4_SetInverted() do { PORTF_PIN4CTRL  |= PORT_INVEN_bm; } while(0)
+#define IO_PF4_ResetInverted() do { PORTF_PIN4CTRL  &= ~PORT_INVEN_bm; } while(0)
+#define IO_PF4_DisableInterruptOnChange() do { PORTF.PIN4CTRL = (PORTF.PIN4CTRL & ~PORT_ISC_gm) | 0x0 ; } while(0)
+#define IO_PF4_EnableInterruptForBothEdges() do { PORTF.PIN4CTRL = (PORTF.PIN4CTRL & ~PORT_ISC_gm) | 0x1 ; } while(0)
+#define IO_PF4_EnableInterruptForRisingEdge() do { PORTF.PIN4CTRL = (PORTF.PIN4CTRL & ~PORT_ISC_gm) | 0x2 ; } while(0)
+#define IO_PF4_EnableInterruptForFallingEdge() do { PORTF.PIN4CTRL = (PORTF.PIN4CTRL & ~PORT_ISC_gm) | 0x3 ; } while(0)
+#define IO_PF4_DisableDigitalInputBuffer() do { PORTF.PIN4CTRL = (PORTF.PIN4CTRL & ~PORT_ISC_gm) | 0x4 ; } while(0)
+#define IO_PF4_EnableInterruptForLowLevelSensing() do { PORTF.PIN4CTRL = (PORTF.PIN4CTRL & ~PORT_ISC_gm) | 0x5 ; } while(0)
+#define PF4_SetInterruptHandler IO_PF4_SetInterruptHandler
 
 /**
  * @ingroup  pinsdriver
@@ -245,4 +264,25 @@ void SLP_DefaultInterruptHandler(void);
  * @return none
  */
 void SLP_SetInterruptHandler(void (* interruptHandler)(void)) ; 
+
+/**
+ * @ingroup  pinsdriver
+ * @brief Default Interrupt Handler for IO_PF4 pin. 
+ *        This is a predefined interrupt handler to be used together with the IO_PF4_SetInterruptHandler() method.
+ *        This handler is called every time the IO_PF4 ISR is executed. 
+ * @pre PIN_MANAGER_Initialize() has been called at least once
+ * @param none
+ * @return none
+ */
+void IO_PF4_DefaultInterruptHandler(void);
+
+/**
+ * @ingroup  pinsdriver
+ * @brief Interrupt Handler Setter for IO_PF4 pin input-sense-config functionality.
+ *        Allows selecting an interrupt handler for IO_PF4 at application runtime
+ * @pre PIN_MANAGER_Initialize() has been called at least once
+ * @param InterruptHandler function pointer.
+ * @return none
+ */
+void IO_PF4_SetInterruptHandler(void (* interruptHandler)(void)) ; 
 #endif /* PINS_H_INCLUDED */

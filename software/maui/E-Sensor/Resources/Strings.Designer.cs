@@ -347,7 +347,16 @@ namespace E_Sensor.Resources {
                 return ResourceManager.GetString("WarmupBadge", resourceCulture);
             }
         }
-        
+
+        /// <summary>
+        ///   OFF に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string OffBadge {
+            get {
+                return ResourceManager.GetString("OffBadge", resourceCulture);
+            }
+        }
+
         /// <summary>
         ///   Yes に類似しているローカライズされた文字列を検索します。
         /// </summary>

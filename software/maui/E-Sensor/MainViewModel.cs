@@ -123,9 +123,15 @@ public partial class MainViewModel : ObservableObject
   [NotifyPropertyChangedFor(nameof(VelocityBadgeText))]
   private bool _isVelocityWarmup = false;
 
-  /// <summary>風速カード用バッジ表示文字列（空文字列のとき非表示）</summary>
+  /// <summary>風速カード用バッジ表示文字列（空文字列のとき非表示・値をグレー化）</summary>
+  /// <remarks>
+  /// OFF（停止中）は計測していないので「停止中」を表示して値を無効化。ON でも予熱中
+  /// （約5秒）は値が無意味なので「ウォームアップ中」を表示する。
+  /// </remarks>
   public string VelocityBadgeText =>
-      IsVelocityWarmup ? Resources.Strings.WarmupBadge : string.Empty;
+      !IsVelocityOn ? Resources.Strings.OffBadge :
+      IsVelocityWarmup ? Resources.Strings.WarmupBadge :
+      string.Empty;
 
   /// <summary>照度計測値が有効か否か</summary>
   [ObservableProperty]
@@ -189,6 +195,7 @@ public partial class MainViewModel : ObservableObject
   /// </remarks>
   [ObservableProperty]
   [NotifyPropertyChangedFor(nameof(TempHumInfoBadgeText))]
+  [NotifyPropertyChangedFor(nameof(VelocityBadgeText))]
   private bool _isVelocityOn = true;
 
   /// <summary>風速計 On/Off トグルが利用可能か（ファーム v1.1.0 以降）</summary>
@@ -630,14 +637,8 @@ public partial class MainViewModel : ObservableObject
       UpdateThermalCorrection();
       ApplyTempHumDisplay();
 
-      // 風速 (保証レンジは 5.0 m/s まで。超過時はレンジオーバー表示)
-      if (IsVelocityValid)
-      {
-        var vel = _latestEntry!.Vel;
-        Velocity = vel > 5.0 ? ">5.0" : vel.ToString("F2");
-        Voltage = _latestEntry!.Volt.ToString("F3");
-      }
-      else if (!_hasValidDataReceived) Velocity = "---";
+      // 風速
+      ApplyVelocityDisplay();
 
       // 照度
       if (IsIlluminanceValid)
@@ -699,6 +700,32 @@ public partial class MainViewModel : ObservableObject
     }
   }
 
+  /// <summary>
+  /// 風速の表示文字列を反映する。OFF（停止中）と予熱中は値が無意味なので "---" にし、
+  /// バッジ(VelocityBadgeText)でグレー化する。トグル切替時にも即時反映できるよう独立。
+  /// </summary>
+  private void ApplyVelocityDisplay()
+  {
+    var e = _latestEntry;
+    if (!IsVelocityOn)
+    {
+      // OFF: 計測停止中。値を無効表示にする（バッジ「停止中」でグレー化）。
+      Velocity = "---";
+      Voltage = "---";
+    }
+    else if (IsVelocityValid && e != null)
+    {
+      // 保証レンジは 5.0 m/s まで。超過時はレンジオーバー表示。
+      var vel = e.Vel;
+      Velocity = vel > 5.0 ? ">5.0" : vel.ToString("F2");
+      Voltage = e.Volt.ToString("F3");
+    }
+    else if (!_hasValidDataReceived)
+    {
+      Velocity = "---";
+    }
+  }
+
   /// <summary>風速計 ON/OFF 切替時：実コマンド送信(対応ファームのみ)と表示の即時更新。</summary>
   partial void OnIsVelocityOnChanged(bool value)
   {
@@ -706,8 +733,23 @@ public partial class MainViewModel : ObservableObject
     {
       _midiService.SendSysEx(value ? MidiCommands.CMD_VEL_START : MidiCommands.CMD_VEL_STOP);
     }
-    // 補正値↔生値の表示を即座に切り替える
-    Application.Current?.Dispatcher.Dispatch(ApplyTempHumDisplay);
+    if (value)
+    {
+      // ON: 白金抵抗の予熱（約5秒）中は値が無意味なので「ウォームアップ中」を表示
+      StartVelocityWarmupCountdown();
+    }
+    else
+    {
+      // OFF: 予熱表示は不要なので解除
+      _velocityWarmupTimer?.Stop();
+      IsVelocityWarmup = false;
+    }
+    // 補正値↔生値・風速表示を即座に切り替える
+    Application.Current?.Dispatcher.Dispatch(() =>
+    {
+      ApplyTempHumDisplay();
+      ApplyVelocityDisplay();
+    });
   }
 
   /// <summary>「補正値」バッジのタップで熱影響補正の説明をポップアップ表示する。</summary>

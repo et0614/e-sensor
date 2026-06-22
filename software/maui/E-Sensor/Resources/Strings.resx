@@ -201,6 +201,9 @@
   <data name="WarmupBadge" xml:space="preserve">
     <value>WARM-UP</value>
   </data>
+  <data name="OffBadge" xml:space="preserve">
+    <value>OFF</value>
+  </data>
   <data name="ConditioningBadge" xml:space="preserve">
     <value>CONDITIONING</value>
   </data>

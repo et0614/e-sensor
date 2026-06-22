@@ -201,6 +201,9 @@
   <data name="WarmupBadge" xml:space="preserve">
     <value>ウォームアップ中</value>
   </data>
+  <data name="OffBadge" xml:space="preserve">
+    <value>停止中</value>
+  </data>
   <data name="ConditioningBadge" xml:space="preserve">
     <value>初期調整中</value>
   </data>
