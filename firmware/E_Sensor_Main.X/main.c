@@ -5,6 +5,7 @@
 
 #include <avr/interrupt.h>
 #include <avr/wdt.h>
+#include <avr/sleep.h>
 
 #include "tinyusb/tusb.h"
 #include "midi_app.h"
@@ -109,9 +110,15 @@ int main(void)
 
     // 割り込み開始
     sei();
-    
+
     B_LED_SetLow();
-    
+
+    // スリープモードは IDLE。CPU コアのみ停止し、USB・TCA0(1ms)・I2C 等の周辺は
+    // 動作を継続する。割込（USB 転送/SOF、1ms タイマ等）で即復帰してループを回す。
+    // これにより常時 24MHz でビジーループしていた分の動的消費（=自己発熱）を抑える。
+    // ※STANDBY/POWER-DOWN は USB クロックも停止し接続が切れるため使用不可。
+    set_sleep_mode(SLEEP_MODE_IDLE);
+
     while(1)
     {
         // ウォッチドッグキック
@@ -150,5 +157,9 @@ int main(void)
             if(EM_Sensing_Enabled) B_LED_Toggle();
             else B_LED_SetLow();
         }
+
+        // 次の割込まで CPU を休止（IDLE）。USB 割込・1ms タイマ等で復帰する。
+        // 遅くとも 1ms ごとに TCA0 で起床するため処理の取りこぼしは生じない。
+        sleep_mode();
     }
 }
