@@ -62,9 +62,12 @@ uint32_t tusb_time_millis_api(void) {
 }
 
 void setup_usb(void) {
-    // 1. 周波数を 24MHz に設定 (USB動作のベース)
-    // 2. AUTOTUNE を SOF (USB Start of Frame) に同期する設定 (0x02) にする
-    ccp_write_io((void *)&(CLKCTRL.OSCHFCTRLA), CLKCTRL_FRQSEL_24M_gc | CLKCTRL_AUTOTUNE_SOF_gc);
+    // 1. 周波数を 12MHz に設定 (USB FS の下限。Microchip 公式 CDC 例より、AVR DU の
+    //    USB フルスピード動作に必要な最低オシレータ周波数は 12MHz。24MHz から半減させ、
+    //    発振器・常時動作周辺（USB/TCA0/I2C）の動的消費＝自己発熱を更に低減する。
+    //    ※USB の下限が 12MHz なので、USB 接続中はこれ以上は下げられない。
+    // 2. AUTOTUNE を SOF (USB Start of Frame) に同期する設定にする（12MHz でも SOF 同期は有効）
+    ccp_write_io((void *)&(CLKCTRL.OSCHFCTRLA), CLKCTRL_FRQSEL_12M_gc | CLKCTRL_AUTOTUNE_SOF_gc);
     
     SYSCFG.VUSBCTRL = SYSCFG_USBVREG_bm;
     
@@ -115,7 +118,7 @@ int main(void)
 
     // スリープモードは IDLE。CPU コアのみ停止し、USB・TCA0(1ms)・I2C 等の周辺は
     // 動作を継続する。割込（USB 転送/SOF、1ms タイマ等）で即復帰してループを回す。
-    // これにより常時 24MHz でビジーループしていた分の動的消費（=自己発熱）を抑える。
+    // これにより常時クロックでビジーループしていた分の動的消費（=自己発熱）を抑える。
     // ※STANDBY/POWER-DOWN は USB クロックも停止し接続が切れるため使用不可。
     set_sleep_mode(SLEEP_MODE_IDLE);
 

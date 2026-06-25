@@ -5,7 +5,9 @@
 #define EEPROM_BASE_ADDR  0x1400
 
 // EEPROM Busy 待ちの上限（反復回数）。EEPROM 1 バイト書き込みは実デバイス仕様で
-// 11 ms 程度。F_CPU = 24 MHz、空ループ 1 回あたり数 cycle なので十分な余裕。
+// 11 ms 程度。F_CPU = 12 MHz、空ループ 1 回あたり数 cycle なので十分な余裕。
+// （反復回数は実時間で決まりF_CPUに非追従。12MHz化で実時間は約2倍に伸びるが、
+//   これは「待ちきれる十分長い上限」のため余裕が増えるだけで問題ない。）
 #define EEPROM_WAIT_MAX_ITER  200000UL
 
 // EEPROM の完了待ち。タイムアウトしても返すだけで、呼出側には副作用を強要しない。

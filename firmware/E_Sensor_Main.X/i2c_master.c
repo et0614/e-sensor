@@ -2,10 +2,12 @@
 #include "mcc_generated_files/i2c_host/twi0.h"
 
 // I2C バス完了待ちの上限。TWI0_IsBusy/Tasks を繰り返し回すループの反復回数で
-// 表現する。F_CPU = 24 MHz、1 反復あたり 100〜200 cycle 程度として概ね 0.8〜1.6 秒
+// 表現する。F_CPU = 12 MHz、1 反復あたり 100〜200 cycle 程度として概ね 0.8〜1.6 秒
 // 相当。この上限を超えたら通信を諦めてエラー復帰し、呼び出し側にリトライを委ねる。
 // WDT (~4s) より十分短く設定していること。
-#define I2C_WAIT_MAX_ITER  200000UL
+// ※反復回数は実時間で決まる(F_CPUに非追従)ため、12MHz化に合わせて 200000→100000 に
+//   半減し、24MHz時と同じ実時間(0.8〜1.6s)を保っている。
+#define I2C_WAIT_MAX_ITER  100000UL
 
 // 内部関数: バスをアイドル状態に強制復帰させる
 static void i2c_recover_bus(void)

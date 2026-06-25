@@ -96,7 +96,7 @@ void TCA0_Initialize(void)
         | (0 << TCA_SINGLE_CMP2_bp)   // CMP2 disabled
         | (0 << TCA_SINGLE_OVF_bp);  // OVF disabled
 
-    TCA0.SINGLE.PER = 0x5DBFU;  // PER 0x5DBF
+    TCA0.SINGLE.PER = 0x2EDFU;  // PER 0x2EDF
 
     TCA0.SINGLE.TEMP = 0x0;  // TEMP 0x0
 
