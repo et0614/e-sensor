@@ -1,10 +1,14 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Popolo.Core.ThermalComfort;
 
 namespace E_Sensor;
 
-// 記録用データ構造 (CorrTemp/CorrHum は熱影響補正後の温湿度。記録時に設定される)
-public record SensorLogEntry(DateTime Timestamp, double Temp, double Hum, double Vel, double Volt, double Ill, int Co2, bool IsTempValid, bool IsVelValid, bool IsIllValid, double CorrTemp = 0, double CorrHum = 0);
+// 記録用データ構造。Temp/Hum には「画面に表示している値」を記録する。
+// v1.1.2 未満（体験版・熱影響補正あり）では補正後の温湿度、v1.1.2 以降（正規版・
+// 基板改良で熱影響なし）では生値がそのまま入る。CSV には生値と補正値を併記せず、
+// この表示値の 1 系統のみを書き出す（ユーザの混乱を避けるため）。
+public record SensorLogEntry(DateTime Timestamp, double Temp, double Hum, double Vel, double Volt, double Ill, int Co2, bool IsTempValid, bool IsVelValid, bool IsIllValid);
 
 public partial class MainViewModel : ObservableObject
 {
@@ -72,6 +76,14 @@ public partial class MainViewModel : ObservableObject
   [ObservableProperty]
   private string _co2Level = "---";
 
+  /// <summary>PMV（予測温冷感申告）の表示文字列（符号付き。算出不可時は "---"）</summary>
+  [ObservableProperty]
+  private string _pmv = "---";
+
+  /// <summary>PMV カードの Unit スロットに表示する PPD[%]（例 "PPD 7%"。算出不可時は空）</summary>
+  [ObservableProperty]
+  private string _pmvPpd = string.Empty;
+
   /// <summary>CO2 がバイパス位相中（起動直後または初期調整完了後 20 秒間）か否か</summary>
   /// <remarks>
   /// STCC4 のデータシート §1.1.4 に記載のとおり、連続計測開始からの最初の 20 秒間は
@@ -107,11 +119,12 @@ public partial class MainViewModel : ObservableObject
 
   /// <summary>温度・湿度カード用 情報バッジ（補正値の注記。タップで説明を表示）</summary>
   /// <remarks>
-  /// 風速計 ON（自己発熱中）は温湿度を熱影響補正した推定値を表示するため「補正値」を
-  /// 注記する。初期調整中は値自体が無効なので警告バッジを優先し、情報バッジは出さない。
+  /// 熱影響補正が実際に効いているとき（＝v1.1.2 未満で風速計 ON）だけ「補正値」を注記する。
+  /// v1.1.2 以降は基板改良で熱影響が無く補正しないため、注記も出さない。初期調整中は値自体が
+  /// 無効なので警告バッジを優先し、情報バッジは出さない。
   /// </remarks>
   public string TempHumInfoBadgeText =>
-      (IsVelocityOn && !IsConditioning) ? Resources.Strings.CorrectedBadge : string.Empty;
+      (UseThermalCorrection && !IsConditioning) ? Resources.Strings.CorrectedBadge : string.Empty;
 
   /// <summary>風速が予熱中か否か（接続直後の 5 秒間）</summary>
   /// <remarks>
@@ -186,6 +199,7 @@ public partial class MainViewModel : ObservableObject
   /// <summary>ファームウェアのバージョン</summary>
   [ObservableProperty]
   [NotifyPropertyChangedFor(nameof(IsVelocityToggleSupported))]
+  [NotifyPropertyChangedFor(nameof(TempHumInfoBadgeText))]
   private string _firmwareVersion = "---";
 
   /// <summary>風速計が ON か否か（アプリ側で保持する稼働状態。電源投入時は ON）</summary>
@@ -258,6 +272,41 @@ public partial class MainViewModel : ObservableObject
 
   /// <summary>最新の補正済み相対湿度[%]</summary>
   private double _correctedHum;
+
+  /// <summary>
+  /// カルマン温度補正を「そのバージョンで行う仕様か」を表す。v1.1.2 で基板形状を改良し
+  /// 温度センサへの熱影響を無くしたため、補正は <b>v1.1.2 未満（体験版）のみの例外</b>とする。
+  /// v1.1.2 以降（正規版）および将来のすべてのバージョンでは false となり、補正は行わない。
+  /// ハードに合わせてファームを焼く運用のため、ファームバージョンで判定して差し支えない。
+  /// </summary>
+  private bool IsThermalCorrectionActive => !IsFirmwareAtLeast(1, 1, 2);
+
+  /// <summary>
+  /// いま実際に補正値を表示すべきか。補正仕様のバージョン（v1.1.2 未満）かつ風速計 ON
+  /// （自己発熱中）のときのみ true。それ以外は生値を表示する。
+  /// </summary>
+  private bool UseThermalCorrection => IsThermalCorrectionActive && IsVelocityOn;
+
+  /// <summary>画面に表示している温度[℃]（補正実効時は補正値、非実効時は生値）</summary>
+  private double DisplayTemp => UseThermalCorrection ? _correctedTemp : (_latestEntry?.Temp ?? 0);
+
+  /// <summary>画面に表示している相対湿度[%]（補正実効時は補正値、非実効時は生値）</summary>
+  private double DisplayHum => UseThermalCorrection ? _correctedHum : (_latestEntry?.Hum ?? 0);
+
+  /// <summary>PMV 計算用の着衣量[clo]（Preferences に永続化）</summary>
+  private double _clothing;
+
+  /// <summary>PMV 計算用の代謝量[met]（Preferences に永続化）</summary>
+  private double _metabolicRate;
+
+  private const string PREF_CLO = "pmv_clo";
+  private const string PREF_MET = "pmv_met";
+
+  /// <summary>着衣量の既定値[clo]（春秋の標準的な服装）</summary>
+  private const double DEFAULT_CLO = 0.7;
+
+  /// <summary>代謝量の既定値[met]（座位の事務作業）</summary>
+  private const double DEFAULT_MET = 1.2;
 
   /// <summary>FirmwareVersion ("major.minor.rev") が指定バージョン以上かを判定する。</summary>
   private bool IsFirmwareAtLeast(int major, int minor, int rev)
@@ -434,17 +483,15 @@ public partial class MainViewModel : ObservableObject
     {
       // CSVデータの生成
       var sb = new System.Text.StringBuilder();
-      sb.AppendLine("Date,Time,Temperature[C],Humidity[%],CorrectedTemperature[C],CorrectedHumidity[%],Velocity[m/s],Illuminance[Lux],CO2[ppm],Velocity Voltage[V],Temperature Valid,Velocity Valid,Illuminance Valid");
+      sb.AppendLine("Date,Time,Temperature[C],Humidity[%],Velocity[m/s],Illuminance[Lux],CO2[ppm],Velocity Voltage[V],Temperature Valid,Velocity Valid,Illuminance Valid");
       foreach (var row in _recordedData)
       {
         // InvariantCultureを指定することで、OSの言語設定に関わらず小数点を「.」に固定(温湿度と照度は表示値よりも1桁精度高)
         var line = string.Format(System.Globalization.CultureInfo.InvariantCulture,
-            "{0:yyyy-MM-dd,HH:mm:ss},{1:F2},{2:F2},{3:F2},{4:F2},{5:F3},{6:F1},{7},{8:F3},{9},{10},{11}",
+            "{0:yyyy-MM-dd,HH:mm:ss},{1:F2},{2:F2},{3:F3},{4:F1},{5},{6:F3},{7},{8},{9}",
             row.Timestamp,
             row.Temp,
             row.Hum,
-            row.CorrTemp,
-            row.CorrHum,
             row.Vel,
             row.Ill,
             row.Co2,
@@ -486,6 +533,10 @@ public partial class MainViewModel : ObservableObject
     _midiService.ConnectionChanged += OnMidiConnectionChanged;
 
     _loggingService = loggingService;
+
+    // PMV の着衣量/代謝量を復元（未設定なら既定値）
+    _clothing = Preferences.Get(PREF_CLO, DEFAULT_CLO);
+    _metabolicRate = Preferences.Get(PREF_MET, DEFAULT_MET);
 
     // 起動時の初期状態を反映
     initializeAsync();
@@ -645,7 +696,41 @@ public partial class MainViewModel : ObservableObject
         Illuminance = _latestEntry!.Ill.ToString("F0");
       else if (!_hasValidDataReceived)
         Illuminance = "---";
+
+      // PMV/PPD（温湿度・風速が揃ってから算出）
+      UpdatePmvDisplay();
     });
+  }
+
+  /// <summary>
+  /// PMV（予測温冷感申告）と PPD を算出して表示に反映する。放射温度は測定手段が無いため
+  /// 空気温度と等しいと仮定する（簡易 PMV）。風速は PMV に効くが、風速計 OFF・予熱中・
+  /// 無効時は気流が実測できないため算出せず "---" とする。表示温湿度に合わせ、風速計 ON 時の
+  /// 熱影響補正済み値を入力に用いる。
+  /// </summary>
+  private void UpdatePmvDisplay()
+  {
+    var e = _latestEntry;
+    bool usable = IsVelocityOn && !IsConditioning && !IsVelocityWarmup
+                  && IsTemperatureValid && IsVelocityValid && e != null && _hasValidDataReceived;
+    if (!usable)
+    {
+      Pmv = "---";
+      PmvPpd = string.Empty;
+      return;
+    }
+
+    double ta = DisplayTemp;                             // 乾球温度[℃]（表示値=補正実効時は補正値）
+    double rh = Math.Clamp(DisplayHum, 0.0, 100.0);      // 相対湿度[%]
+    double airVel = Math.Clamp(e!.Vel, 0.0, 5.0);        // 相対気流速度[m/s]
+
+    // Fanger モデル（ISO 7730）。tr=ta、外部仕事=0 とする。
+    double pmv = FangerModel.GetPMV(ta, ta, rh, airVel, _clothing, _metabolicRate, 0.0);
+    pmv = Math.Clamp(pmv, -3.0, 3.0);
+    double ppd = FangerModel.GetPPD(pmv);
+
+    Pmv = pmv.ToString("+0.0;-0.0;0.0");                 // 符号付き（例 +0.3 / -0.5 / 0.0）
+    PmvPpd = $"PPD {ppd:F0}%";
   }
 
   /// <summary>
@@ -657,6 +742,11 @@ public partial class MainViewModel : ObservableObject
   {
     var e = _latestEntry;
     if (e == null) return;
+
+    // v1.1.2 以降（正規版）は基板改良で熱影響が無いため、そもそも KF を回さない。
+    // 補正は v1.1.2 未満（体験版）のみの例外処理。表示・記録側は DisplayTemp/DisplayHum
+    // を通して生値を使うため、ここで _correctedTemp を更新しなくても問題ない。
+    if (!IsThermalCorrectionActive) return;
 
     var now = DateTime.Now;
     double sinceLast = _lastCorrTime.HasValue ? (now - _lastCorrTime.Value).TotalSeconds : 1.0;
@@ -685,10 +775,8 @@ public partial class MainViewModel : ObservableObject
     // 温湿度とCO2は起動に時間がかかるセンサーのため、初回有効データ受信前は --- 表示
     if (IsTemperatureValid && e != null)
     {
-      double dispT = IsVelocityOn ? _correctedTemp : e.Temp;
-      double dispH = IsVelocityOn ? _correctedHum : e.Hum;
-      Temperature = dispT.ToString("F1");
-      Humidity = dispH.ToString("F1");
+      Temperature = DisplayTemp.ToString("F1");
+      Humidity = DisplayHum.ToString("F1");
       Co2Level = e.Co2.ToString();
       _hasValidDataReceived = true;
     }
@@ -749,6 +837,7 @@ public partial class MainViewModel : ObservableObject
     {
       ApplyTempHumDisplay();
       ApplyVelocityDisplay();
+      UpdatePmvDisplay();
     });
   }
 
@@ -764,6 +853,72 @@ public partial class MainViewModel : ObservableObject
           Resources.Strings.CorrectionInfoMsg,
           "OK");
     }
+  }
+
+  /// <summary>PMV カードの歯車アイコン：着衣量/代謝量の設定と PMV の説明を提供する。</summary>
+  /// <remarks>
+  /// 主表示を散らかさないよう、設定はカード上の 1 つの歯車に集約し ActionSheet 経由で
+  /// プリセット選択させる。選択値は Preferences に永続化し、次回起動時も引き継ぐ。
+  /// </remarks>
+  [RelayCommand]
+  private async Task OpenPmvSettings()
+  {
+    var page = Application.Current?.Windows.FirstOrDefault()?.Page;
+    if (page == null) return;
+
+    string action = await page.DisplayActionSheet(
+        Resources.Strings.PmvSettingsTitle,
+        Resources.Strings.Cancel,
+        destruction: null,
+        Resources.Strings.PmvSetClothing,
+        Resources.Strings.PmvSetMetabolic,
+        Resources.Strings.PmvAbout);
+
+    if (action == Resources.Strings.PmvSetClothing)
+    {
+      await PickPmvPreset(page, Resources.Strings.PmvSetClothing, PREF_CLO,
+          new (string, double)[]
+          {
+            (Resources.Strings.PmvCloSummer, 0.5),
+            (Resources.Strings.PmvCloMid, 0.7),
+            (Resources.Strings.PmvCloWinter, 1.0),
+          },
+          v => _clothing = v);
+    }
+    else if (action == Resources.Strings.PmvSetMetabolic)
+    {
+      await PickPmvPreset(page, Resources.Strings.PmvSetMetabolic, PREF_MET,
+          new (string, double)[]
+          {
+            (Resources.Strings.PmvMetResting, 1.0),
+            (Resources.Strings.PmvMetOffice, 1.2),
+            (Resources.Strings.PmvMetLight, 1.6),
+          },
+          v => _metabolicRate = v);
+    }
+    else if (action == Resources.Strings.PmvAbout)
+    {
+      await page.DisplayAlertAsync(
+          Resources.Strings.PmvAboutTitle,
+          Resources.Strings.PmvAboutMsg,
+          "OK");
+    }
+  }
+
+  /// <summary>着衣量/代謝量のプリセットを ActionSheet で選ばせ、永続化して表示を更新する。</summary>
+  private async Task PickPmvPreset(
+      Page page, string title, string prefKey, (string label, double value)[] presets, Action<double> apply)
+  {
+    string sel = await page.DisplayActionSheet(
+        title, Resources.Strings.Cancel, destruction: null,
+        presets.Select(p => p.label).ToArray());
+
+    var hit = presets.FirstOrDefault(p => p.label == sel);
+    if (hit.label == null) return; // キャンセル
+
+    apply(hit.value);
+    Preferences.Set(prefKey, hit.value);
+    Application.Current?.Dispatcher.Dispatch(UpdatePmvDisplay);
   }
 
   #endregion
@@ -1007,12 +1162,13 @@ public partial class MainViewModel : ObservableObject
         // 接続中の場合のみ記録
         if (IsRecording && _latestEntry != null)
         {
-          // 記録時点の補正値を併せて保存する
+          // 記録時点の「表示値」を温湿度として保存する（補正実効時は補正値、非実効時は生値）。
+          // 生値と補正値の併記はユーザの混乱のもとなので、表示している 1 系統のみを残す。
           var entryToRecord = _latestEntry with
           {
             Timestamp = DateTime.Now,
-            CorrTemp = _correctedTemp,
-            CorrHum = _correctedHum
+            Temp = DisplayTemp,
+            Hum = DisplayHum
           };
           _recordedData.Add(entryToRecord);
 

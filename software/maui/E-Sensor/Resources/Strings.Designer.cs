@@ -365,5 +365,83 @@ namespace E_Sensor.Resources {
                 return ResourceManager.GetString("Yes", resourceCulture);
             }
         }
+
+        public static string PmvTitle {
+            get {
+                return ResourceManager.GetString("PmvTitle", resourceCulture);
+            }
+        }
+
+        public static string PmvSettingsTitle {
+            get {
+                return ResourceManager.GetString("PmvSettingsTitle", resourceCulture);
+            }
+        }
+
+        public static string PmvSetClothing {
+            get {
+                return ResourceManager.GetString("PmvSetClothing", resourceCulture);
+            }
+        }
+
+        public static string PmvSetMetabolic {
+            get {
+                return ResourceManager.GetString("PmvSetMetabolic", resourceCulture);
+            }
+        }
+
+        public static string PmvAbout {
+            get {
+                return ResourceManager.GetString("PmvAbout", resourceCulture);
+            }
+        }
+
+        public static string PmvAboutTitle {
+            get {
+                return ResourceManager.GetString("PmvAboutTitle", resourceCulture);
+            }
+        }
+
+        public static string PmvAboutMsg {
+            get {
+                return ResourceManager.GetString("PmvAboutMsg", resourceCulture);
+            }
+        }
+
+        public static string PmvCloSummer {
+            get {
+                return ResourceManager.GetString("PmvCloSummer", resourceCulture);
+            }
+        }
+
+        public static string PmvCloMid {
+            get {
+                return ResourceManager.GetString("PmvCloMid", resourceCulture);
+            }
+        }
+
+        public static string PmvCloWinter {
+            get {
+                return ResourceManager.GetString("PmvCloWinter", resourceCulture);
+            }
+        }
+
+        public static string PmvMetResting {
+            get {
+                return ResourceManager.GetString("PmvMetResting", resourceCulture);
+            }
+        }
+
+        public static string PmvMetOffice {
+            get {
+                return ResourceManager.GetString("PmvMetOffice", resourceCulture);
+            }
+        }
+
+        public static string PmvMetLight {
+            get {
+                return ResourceManager.GetString("PmvMetLight", resourceCulture);
+            }
+        }
     }
 }

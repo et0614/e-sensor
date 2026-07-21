@@ -219,4 +219,43 @@
   <data name="VelocitySensor" xml:space="preserve">
     <value>風速計</value>
   </data>
+  <data name="PmvTitle" xml:space="preserve">
+    <value>PMV</value>
+  </data>
+  <data name="PmvSettingsTitle" xml:space="preserve">
+    <value>PMV 設定</value>
+  </data>
+  <data name="PmvSetClothing" xml:space="preserve">
+    <value>着衣量 (clo)</value>
+  </data>
+  <data name="PmvSetMetabolic" xml:space="preserve">
+    <value>代謝量 (met)</value>
+  </data>
+  <data name="PmvAbout" xml:space="preserve">
+    <value>PMV について</value>
+  </data>
+  <data name="PmvAboutTitle" xml:space="preserve">
+    <value>PMV について</value>
+  </data>
+  <data name="PmvAboutMsg" xml:space="preserve">
+    <value>PMV（予測温冷感申告）は温熱的な快適さを -3（寒い）〜+3（暑い）で表す指標で、0 が中立です。PPD は予測される不満足者率です。本機はグローブ温度計を持たないため、平均放射温度は空気温度に等しいと仮定した簡易 PMV です。気流（風速）は結果に大きく影響するため、PMV は風速計が ON のときのみ表示します。</value>
+  </data>
+  <data name="PmvCloSummer" xml:space="preserve">
+    <value>夏服 (0.5)</value>
+  </data>
+  <data name="PmvCloMid" xml:space="preserve">
+    <value>合服 (0.7)</value>
+  </data>
+  <data name="PmvCloWinter" xml:space="preserve">
+    <value>冬服 (1.0)</value>
+  </data>
+  <data name="PmvMetResting" xml:space="preserve">
+    <value>安静・着席 (1.0)</value>
+  </data>
+  <data name="PmvMetOffice" xml:space="preserve">
+    <value>事務作業 (1.2)</value>
+  </data>
+  <data name="PmvMetLight" xml:space="preserve">
+    <value>立ち作業・軽作業 (1.6)</value>
+  </data>
 </root>

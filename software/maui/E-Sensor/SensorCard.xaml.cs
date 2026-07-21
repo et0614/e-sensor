@@ -32,6 +32,13 @@ public partial class SensorCard : ContentView
   public static readonly BindableProperty InfoBadgeCommandProperty =
       BindableProperty.Create(nameof(InfoBadgeCommand), typeof(ICommand), typeof(SensorCard), null);
 
+  // 設定（歯車）アイコン用コマンド。null のとき: アイコン非表示。
+  // 非 null のとき: タイトル右に歯車アイコンを表示し、タップで実行する（PMV カードの
+  // 着衣量/代謝量設定などに使用）。
+  public static readonly BindableProperty SettingsCommandProperty =
+      BindableProperty.Create(nameof(SettingsCommand), typeof(ICommand), typeof(SensorCard), null,
+          propertyChanged: OnSettingsCommandChanged);
+
   public string Title
   {
     get => (string)GetValue(TitleProperty);
@@ -68,12 +75,19 @@ public partial class SensorCard : ContentView
     set => SetValue(InfoBadgeCommandProperty, value);
   }
 
+  public ICommand SettingsCommand
+  {
+    get => (ICommand)GetValue(SettingsCommandProperty);
+    set => SetValue(SettingsCommandProperty, value);
+  }
+
   public SensorCard()
   {
     InitializeComponent();
     // 初期状態を反映（デフォルト = 通常表示）
     UpdateBadgeVisuals(BadgeText);
     InfoBadgeBorder.IsVisible = !string.IsNullOrEmpty(InfoBadgeText);
+    SettingsIcon.IsVisible = SettingsCommand != null;
   }
 
   private void UpdateBadgeVisuals(string? badgeText)
@@ -97,6 +111,14 @@ public partial class SensorCard : ContentView
     if (bindable is SensorCard card)
     {
       card.InfoBadgeBorder.IsVisible = !string.IsNullOrEmpty(newValue as string);
+    }
+  }
+
+  private static void OnSettingsCommandChanged(BindableObject bindable, object oldValue, object newValue)
+  {
+    if (bindable is SensorCard card)
+    {
+      card.SettingsIcon.IsVisible = newValue != null;
     }
   }
 }

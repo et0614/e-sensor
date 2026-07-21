@@ -30,6 +30,18 @@
                      ・InfoBadgeBorder(情報/青): 「補正値」など正しい補正済み値の注記。
                        値は灰色化せず、タップで説明ポップアップを出す。 -->
                 <HorizontalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center">
+                    <!-- 設定（歯車）アイコン。SettingsCommand が設定されているカード（PMV）
+                         でのみ表示。タップで着衣量/代謝量の設定シートを開く。 -->
+                    <Label x:Name="SettingsIcon"
+                           Text="&#x2699;"
+                           FontSize="16"
+                           TextColor="#5483AB"
+                           VerticalOptions="Center"
+                           IsVisible="False">
+                        <Label.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding SettingsCommand, Source={x:Reference this}}" />
+                        </Label.GestureRecognizers>
+                    </Label>
                     <Border x:Name="InfoBadgeBorder"
                             StrokeShape="RoundRectangle 4"
                             Stroke="#5483AB"

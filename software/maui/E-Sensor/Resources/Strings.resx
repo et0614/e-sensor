@@ -219,4 +219,43 @@
   <data name="VelocitySensor" xml:space="preserve">
     <value>Anemometer</value>
   </data>
+  <data name="PmvTitle" xml:space="preserve">
+    <value>PMV</value>
+  </data>
+  <data name="PmvSettingsTitle" xml:space="preserve">
+    <value>PMV Settings</value>
+  </data>
+  <data name="PmvSetClothing" xml:space="preserve">
+    <value>Clothing (clo)</value>
+  </data>
+  <data name="PmvSetMetabolic" xml:space="preserve">
+    <value>Metabolic rate (met)</value>
+  </data>
+  <data name="PmvAbout" xml:space="preserve">
+    <value>About PMV</value>
+  </data>
+  <data name="PmvAboutTitle" xml:space="preserve">
+    <value>About PMV</value>
+  </data>
+  <data name="PmvAboutMsg" xml:space="preserve">
+    <value>PMV (Predicted Mean Vote) estimates thermal comfort on a scale from -3 (cold) to +3 (hot), with 0 being neutral; PPD is the predicted percentage of people dissatisfied. Because this device has no globe thermometer, the mean radiant temperature is assumed to equal the air temperature, so this is a simplified PMV. Air velocity strongly affects the result, so PMV is shown only while the anemometer is on.</value>
+  </data>
+  <data name="PmvCloSummer" xml:space="preserve">
+    <value>Summer clothing (0.5)</value>
+  </data>
+  <data name="PmvCloMid" xml:space="preserve">
+    <value>Spring/Autumn (0.7)</value>
+  </data>
+  <data name="PmvCloWinter" xml:space="preserve">
+    <value>Winter clothing (1.0)</value>
+  </data>
+  <data name="PmvMetResting" xml:space="preserve">
+    <value>Resting, seated (1.0)</value>
+  </data>
+  <data name="PmvMetOffice" xml:space="preserve">
+    <value>Office work (1.2)</value>
+  </data>
+  <data name="PmvMetLight" xml:space="preserve">
+    <value>Light activity (1.6)</value>
+  </data>
 </root>
