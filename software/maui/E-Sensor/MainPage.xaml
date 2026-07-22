@@ -55,13 +55,20 @@
         </Style>
     </ContentPage.Resources>
 
+    <!-- SafeAreaEdges: 全体はエッジツーエッジ(None)を維持し、暗色パネルの背景を画面端まで
+         到達させる。最下部コンテンツの安全域回避は、パネル全体ではなくフッタ行だけに
+         SafeAreaEdges を設定して行う(下記フッタ Grid 参照)。ここで下端を Container にすると
+         パネルごと押し上げられ、下にページ背景(明色)の帯が露出してしまうため行わない。 -->
     <Grid ColumnDefinitions="{OnIdiom Phone='*', Default='240, *'}"
-          RowDefinitions="{OnIdiom Phone='*,280', Default='*'}"
+          RowDefinitions="{OnIdiom Phone='*,Auto', Default='*'}"
           SafeAreaEdges="None">
 
+        <!-- Padding: 電話では最下部パネルとなり、右下の角丸に e-sensor.jp/VER 行(右下隅に
+             右寄せ配置)が食い込むため、右を広げて角の丸みから逃がす。高さは Auto なので
+             内容に合わせて確保され、下端の safe area はグリッド側で別途インセットされる。 -->
         <VerticalStackLayout Grid.Column="0"
                              Grid.Row="{OnIdiom Phone=1, Default=0}"
-                             Padding="20"
+                             Padding="{OnIdiom Phone='20,20,30,24', Default='20'}"
                              Spacing="15"
                              ZIndex="5"
                              BackgroundColor="#1B263B">
@@ -126,8 +133,27 @@
                         VerticalOptions="Center" />
             </HorizontalStackLayout>
 
-            <VerticalStackLayout VerticalOptions="End" Spacing="2" Margin="0,10,0,0">
-                <HorizontalStackLayout HorizontalOptions="End" Spacing="5" VerticalOptions="Center">
+            <!-- フッタ行。Web リンク(左端)と VER/ID クラスタ(右端)を可変スペーサーを挟んで
+                 1 行に配置し、幅を使い切って縦を節約する。狭い画面(タブレット左パネル240等)
+                 でも両端に寄せることで溢れにくくする。
+                 SafeAreaEdges 下端 Container: この行だけを Android ナビゲーションバー／iOS
+                 ホームインジケータの上へ逃がす。暗色パネル背景は画面端まで残るため下部に
+                 明色の帯は出ない。 -->
+            <Grid VerticalOptions="End" Margin="0,10,0,0" ColumnDefinitions="Auto,*,Auto"
+                  SafeAreaEdges="None, None, None, Container">
+                <!-- プロジェクト Web サイトへのリンク。タップで既定ブラウザを起動する。 -->
+                <Label Grid.Column="0"
+                       Text="e-sensor.jp"
+                       FontSize="10"
+                       TextColor="#8E9AAF"
+                       TextDecorations="Underline"
+                       VerticalOptions="Center">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding OpenWebsiteCommand}" />
+                    </Label.GestureRecognizers>
+                </Label>
+
+                <HorizontalStackLayout Grid.Column="2" HorizontalOptions="End" Spacing="5" VerticalOptions="Center">
                     <!-- 工場リセット / 初期調整など、頻度が低く誤操作のリスクがある操作は
                          小さなアイコンに集約してアクションシート経由で実行する。
                          iOS の MAUI ImageButton は小サイズ・透過背景・Padding=0 の組合せで
@@ -161,20 +187,7 @@
                     <Label Margin="10,0,0,0" Text="ID:" FontSize="10" TextColor="#8E9AAF" VerticalOptions="Center" />
                     <Label Text="{Binding DeviceId}" FontSize="10" TextColor="White" VerticalOptions="Center" />
                 </HorizontalStackLayout>
-
-                <!-- プロジェクト Web サイトへのリンク。情報量を抑えた控えめなテキストリンクとして
-                     配置し、タップで既定ブラウザを起動する。 -->
-                <Label Text="e-sensor.jp"
-                       FontSize="10"
-                       TextColor="#8E9AAF"
-                       TextDecorations="Underline"
-                       HorizontalOptions="End"
-                       Margin="0,2,0,0">
-                    <Label.GestureRecognizers>
-                        <TapGestureRecognizer Command="{Binding OpenWebsiteCommand}" />
-                    </Label.GestureRecognizers>
-                </Label>
-            </VerticalStackLayout>
+            </Grid>
 
         </VerticalStackLayout>
 
@@ -199,7 +212,7 @@
                 <!-- PMV（予測温冷感申告）。値=PMV、Unit スロットに PPD[%] を併記する。
                      歯車アイコン(SettingsCommand)から着衣量/代謝量を設定する。放射温度=気温と
                      仮定した簡易計算のため、風速計 OFF 時は算出せず未表示（ダッシュ）とする。 -->
-                <viewmodels:SensorCard Title="{x:Static res:Strings.PmvTitle}" Value="{Binding Pmv}" Unit="{Binding PmvPpd}" SettingsCommand="{Binding OpenPmvSettingsCommand}" />
+                <viewmodels:SensorCard Title="{x:Static res:Strings.PmvTitle}" Value="{Binding Pmv}" Unit="{Binding PmvPpd}" InfoBadgeText="{Binding PmvSetting}" SettingsCommand="{Binding OpenPmvSettingsCommand}" />
             </FlexLayout>
         </ScrollView>
 

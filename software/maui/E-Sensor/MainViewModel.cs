@@ -84,6 +84,10 @@ public partial class MainViewModel : ObservableObject
   [ObservableProperty]
   private string _pmvPpd = string.Empty;
 
+  /// <summary>PMV カードの情報バッジに常時表示する現在の着衣量/代謝量（例 "0.7clo 1.2met"）</summary>
+  [ObservableProperty]
+  private string _pmvSetting = string.Empty;
+
   /// <summary>CO2 がバイパス位相中（起動直後または初期調整完了後 20 秒間）か否か</summary>
   /// <remarks>
   /// STCC4 のデータシート §1.1.4 に記載のとおり、連続計測開始からの最初の 20 秒間は
@@ -537,6 +541,7 @@ public partial class MainViewModel : ObservableObject
     // PMV の着衣量/代謝量を復元（未設定なら既定値）
     _clothing = Preferences.Get(PREF_CLO, DEFAULT_CLO);
     _metabolicRate = Preferences.Get(PREF_MET, DEFAULT_MET);
+    UpdatePmvSettingBadge();
 
     // 起動時の初期状態を反映
     initializeAsync();
@@ -918,7 +923,14 @@ public partial class MainViewModel : ObservableObject
 
     apply(hit.value);
     Preferences.Set(prefKey, hit.value);
+    UpdatePmvSettingBadge();
     Application.Current?.Dispatcher.Dispatch(UpdatePmvDisplay);
+  }
+
+  /// <summary>現在の着衣量/代謝量を PMV カードの情報バッジ用文字列に反映する（例 "0.7clo 1.2met"）。</summary>
+  private void UpdatePmvSettingBadge()
+  {
+    PmvSetting = $"{_clothing:0.0}clo {_metabolicRate:0.0}met";
   }
 
   #endregion
