@@ -45,8 +45,12 @@ typedef struct {
 //デフォルト設定定数
 #define DEFAULT_FILTER_CONFIG  (6)
 #define DEFAULT_I2C_ADDRESS    (0x10)
-static const float DEFAULT_COEF_A[5] = {0.462f, 0.970f, 0.183f, 1.584f, 0.865f};
-static const float DEFAULT_COEF_B[5] = {0.410f, 0.0f, 0.0f, 0.0f, 0.0f};
+// 風速換算のデフォルト係数（King 則 3 領域）。個体校正前の暫定値として、実機 95 台の
+// 校正結果の平均特性式を採用（analyze_calibration_batch の average_curve, 2026-07-23）。
+//   coefA = [E0, m1, lnC1, m2, lnC2] / coefB = [m3, lnC3, v_split1, v_split2, 未使用]
+// v_split1=0.52, v_split2=2.76 [m/s] で 3 領域を切り替える（校正書き込みと同一形式）。
+static const float DEFAULT_COEF_A[5] = {0.235517f, 0.9376f, 0.0086f, 1.2794f, 0.2501f};
+static const float DEFAULT_COEF_B[5] = {1.6338f, 0.0381f, 0.52f, 2.76f, 0.0f};
 
 static uint8_t last_filter_config;
 static uint8_t last_i2c_address;
