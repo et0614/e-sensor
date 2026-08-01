@@ -38,6 +38,10 @@ POLL_INTERVAL_MS = 1500
 # 誤判定(＝校正中の中断)しないため。2 なら最大 ~2 周(約3秒)で確定。
 REMOVE_DEBOUNCE_MISSES = 2
 
+# 進捗バーの前半 [0, VERIFY_FRAC] を動作確認(verify)、[VERIFY_FRAC, 1.0] を校正本体に
+# 割り当てる。こうすると verify→校正でバーが 0 に戻らず連続して伸びる。
+VERIFY_FRAC = 0.05
+
 # 風洞は CALIBRATOR_PROFILES に定義された ID ぶんだけ用意する。
 # 風洞 id N は fan_index=N・プロファイル=CALIBRATOR_PROFILES[N]。
 # (4風洞運用にはプロファイル 3,4 を calibrate_coefficients.py に追加すること)
@@ -129,8 +133,14 @@ class CalibrationGUI:
         status.grid(row=0, column=1, sticky='w')
         dev = ttk.Label(f, text='-', width=16)
         dev.grid(row=0, column=2, sticky='w')
-        detail = ttk.Label(f, text='未割当', width=36, anchor='w')
-        detail.grid(row=0, column=3, sticky='w')
+        # 進捗: 横棒(Progressbar) + その下に詳細テキスト
+        pf = ttk.Frame(f)
+        pf.grid(row=0, column=3, sticky='w', padx=(0, 6))
+        pbar = ttk.Progressbar(pf, orient='horizontal', length=200,
+                               mode='determinate', maximum=100)
+        pbar.pack(anchor='w')
+        detail = ttk.Label(pf, text='未割当', width=34, anchor='w')
+        detail.pack(anchor='w')
         start_btn = ttk.Button(f, text='校正開始', width=8,
                                command=lambda t=tid: self._on_start(t))
         start_btn.grid(row=0, column=4, sticky='w')
@@ -139,7 +149,7 @@ class CalibrationGUI:
                                 command=lambda t=tid: self._open_result(t))
         result_btn.grid(row=0, column=5, sticky='w', padx=(4, 0))
         result_btn.state(['disabled'])
-        return {'status': status, 'dev': dev, 'detail': detail,
+        return {'status': status, 'dev': dev, 'detail': detail, 'pbar': pbar,
                 'start': start_btn, 'result': result_btn}
 
     # ---------------- USB 監視ループ(別スレッド) ----------------
@@ -264,7 +274,7 @@ class CalibrationGUI:
         device_id = t.present_device_id
         try:
             # 1) 対象個体の MIDI ペアを(開く直前に)再識別する
-            self._ui(lambda: self._set(t, 'verifying', 'MIDIポート識別中...', 0.02))
+            self._ui(lambda: self._set(t, 'verifying', 'MIDIポート識別中...', 0.01))
             pair = disc.find_midi_pair(device_id)
             if pair is None:
                 self._ui(lambda: self._set(t, 'failed', 'MIDI識別失敗(個体が見つからない)'))
@@ -273,7 +283,7 @@ class CalibrationGUI:
                 return
 
             # 2) 動作確認(verify_device)。FAIL でも校正は続行する。
-            self._ui(lambda: self._set(t, 'verifying', '動作確認中...', 0.05))
+            self._ui(lambda: self._set(t, 'verifying', '動作確認中...', 0.03))
             rc = verify_device.main(pair.in_name, pair.out_name)
             if t.cancel_event.is_set():
                 self._ui(lambda: self._set(t, 'cancelled', '中断しました'))
@@ -292,11 +302,12 @@ class CalibrationGUI:
                 validation_points=cfg['validation_points'],
                 calibrator_id=t.id,
                 on_progress=lambda msg, frac, tt=t: self._ui(
-                    lambda: self._set(tt, 'calibrating', msg, frac)),
+                    lambda: self._set(tt, 'calibrating', msg,
+                                      None if frac is None else VERIFY_FRAC + (1 - VERIFY_FRAC) * frac)),
                 on_abnormal=lambda v, tt=t: self._ask_abnormal(tt, v),
                 should_cancel=t.cancel_event.is_set,
             )
-            self._ui(lambda: self._set(t, 'calibrating', '校正中...', 0.1))
+            self._ui(lambda: self._set(t, 'calibrating', '校正中...', VERIFY_FRAC))
             ok = cal.run_calibration(show_plot=False)
 
             if t.cancel_event.is_set():
@@ -368,13 +379,16 @@ class CalibrationGUI:
         label, color = STATUS_STYLE.get(t.status, (t.status, '#000000'))
         r['status'].config(text=label, fg=color)
         r['dev'].config(text=t.present_device_id or '-')
-        if not t.assigned:
-            detail = '未割当'
-        elif t.status in ('calibrating', 'verifying') and t.progress:
-            detail = f"{t.detail}  [{int(t.progress*100)}%]"
-        else:
-            detail = t.detail
+        detail = '未割当' if not t.assigned else t.detail
         r['detail'].config(text=detail)
+        # 進捗バー(0..100)。free/ready は空、done は満、それ以外は progress を反映。
+        if t.status in ('free', 'ready'):
+            pval = 0
+        elif t.status == 'done':
+            pval = 100
+        else:
+            pval = int(t.progress * 100)
+        r['pbar']['value'] = pval
         # 開始ボタン: 「新規接続直後(ready)かつ非実行」のときだけ有効。
         # done/failed/cancelled では無効のまま(誤って再校正しない)。抜線→再接続で
         # free→ready に戻ったときのみ再有効化される。

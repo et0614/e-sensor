@@ -157,6 +157,11 @@ def measurement_duration(ref_v):
 # ==========================================
 # 校正メインクラス
 # ==========================================
+# 進捗バーの更新粒度[s]。整定待ちをこの刻みで小分けし、経過時間に比例して
+# バーを滑らかに進める(合計待ち時間は time.sleep(duration) と等価＝校正の
+# タイミング・精度には影響しない)。
+PROGRESS_TICK = 0.5
+
 # 複数風洞を並行実行すると generate_report の matplotlib(pyplot 大域状態)が
 # 競合しうるため、プロット生成はこのロックで直列化する。
 _REPORT_LOCK = threading.Lock()
@@ -204,11 +209,27 @@ class AnemometerCalibrator:
                 self.on_progress(message, frac)
             except Exception:
                 pass
-        print(message)
+        if message:               # frac のみのティック更新では標準出力しない
+            print(message)
 
 
     def _cancelled(self) -> bool:
         return bool(self.should_cancel and self.should_cancel())
+
+
+    def _sleep_ticking(self, duration, base_w, total_w) -> bool:
+        """duration 秒を PROGRESS_TICK 刻みで待ちつつ、経過時間に比例して進捗バーを
+        進める(メッセージ無し=printしない)。合計待ち時間は time.sleep(duration) と
+        等価。キャンセルされたら False を返す(呼び出し側で中断)。"""
+        t0 = time.time()
+        while True:
+            el = time.time() - t0
+            if el >= duration:
+                return True
+            if self._cancelled():
+                return False
+            self._progress(None, (base_w + el) / total_w)
+            time.sleep(min(PROGRESS_TICK, duration - el))
 
 
     def wait_for_data(self, timeout=2.0) -> SensorData:
@@ -261,10 +282,21 @@ class AnemometerCalibrator:
             except TimeoutError:
                 pass
 
+            # 進捗の時間重み: 各ステップ(整定+計測)の秒数を見積り、経過時間に比例して
+            # バーを進める。合計はほぼ実測と一致し、ステップ長の差も反映される。
+            W_PHASE2 = 2.0
+            w_total = (sum(stabilization_time(p["ref_velocity"])
+                           + measurement_duration(p["ref_velocity"])
+                           for p in self.calibration_points)
+                       + W_PHASE2
+                       + sum(stabilization_time(p["ref_velocity"])
+                             + VAL_MEASUREMENT_DURATION
+                             for p in self.validation_points))
+            done_w = 0.0
+
             # Phase 1: データ収集
             self._progress("=== Phase 1: Data Collection ===", 0.0)
             phase1_results = []
-            prev_power = -1
 
             # 降順（高風速→低風速、最後に 0 m/s）で計測する。理由:
             #  - ファンを0から起動しないので、起動キックの気流スパイクを回避できる。
@@ -280,30 +312,35 @@ class AnemometerCalibrator:
                     print("\n[Cancel] Phase 1 中断。")
                     return False
                 pwr, ref_v = pt["fan_power"], pt["ref_velocity"]
-                self._progress(f"Phase1 {i+1}/{n_cal}: {ref_v} m/s (Fan {pwr}%)",
-                               (i / max(1, n_cal)) * 0.45)
+                stab = stabilization_time(ref_v)
+                meas = measurement_duration(ref_v)
+                self._progress(
+                    f"Phase1 {i+1}/{n_cal}: {ref_v} m/s (Fan {pwr}%) 整定{stab}s/計測{meas}s",
+                    done_w / w_total)
 
                 self.fan.set_power(pwr, self.fan_index)
-                wait_time = stabilization_time(ref_v)
-                print(f"Waiting {wait_time}s for stabilization...")
-                time.sleep(wait_time)
+                # 整定(小刻みに進捗を進める)
+                if not self._sleep_ticking(stab, done_w, w_total):
+                    print("\n[Cancel] Phase 1 中断。")
+                    return False
                 self.client.flush() # 非定常時のデータは捨てる
 
-                meas_dur = measurement_duration(ref_v)
-                print(f"Collecting data for {meas_dur}s...")
+                # 計測(1s サンプリングしつつ経過に比例して進捗)
                 samples = []
-                start_t = time.time()
-                while time.time() - start_t < meas_dur:
+                mstart = time.time()
+                while time.time() - mstart < meas:
                     data = self.client.get_data(timeout=0.5)
                     if data and data.anemo_valid:
                         samples.append(data.voltage)
+                    self._progress(None, (done_w + stab
+                                          + min(time.time() - mstart, meas)) / w_total)
                     time.sleep(1.0)
                 
                 avg_vol = statistics.mean(samples) if samples else 0
                 std_dev = statistics.stdev(samples) if len(samples) > 1 else 0
                 print(f"Result: {avg_vol*1000:.1f} mV (StdDev: {std_dev*1000:.1f})")
                 phase1_results.append({"fan_power": pwr, "ref_velocity": ref_v, "measured_avg": avg_vol, "std_dev": std_dev})
-                prev_power = pwr
+                done_w += stab + meas
 
             # 計測は降順で行ったので、以降のフィット・出力のため風速昇順に並べ替える
             # （e0 = e_volts[0] が 0 m/s、レンジも昇順であることを担保する）。
@@ -333,7 +370,7 @@ class AnemometerCalibrator:
                     return False
 
             # Phase 2: 係数計算と書き込み
-            self._progress("=== Phase 2: Fitting & Writing ===", 0.5)
+            self._progress("=== Phase 2: Fitting & Writing ===", done_w / w_total)
             e_volts = [r["measured_avg"] for r in phase1_results]
             v_speeds = [r["ref_velocity"] for r in phase1_results]
             e0 = e_volts[0]
@@ -354,11 +391,11 @@ class AnemometerCalibrator:
             self.client.write_coefficients(coef_b, type_a=False)
             time.sleep(0.5)
             print("Write successful.")
+            done_w += W_PHASE2
 
             # Phase 3: 検証
-            self._progress("=== Phase 3: Verification ===", 0.6)
+            self._progress("=== Phase 3: Verification ===", done_w / w_total)
             phase3_results = []
-            prev_power = -1
             # 検証も校正と同じ降順で計測（ファン起動キック回避・整定短縮のため）。
             val_points = sorted(self.validation_points,
                                 key=lambda p: p["ref_velocity"], reverse=True)
@@ -369,31 +406,33 @@ class AnemometerCalibrator:
                     return False
                 pwr = pt["fan_power"]
                 ref_v = pt["ref_velocity"]
-                self._progress(f"Phase3 {i+1}/{n_val}: {ref_v} m/s (Fan {pwr}%)",
-                               0.6 + (i / max(1, n_val)) * 0.35)
+                stab = stabilization_time(ref_v)
+                self._progress(
+                    f"Phase3 {i+1}/{n_val}: {ref_v} m/s (Fan {pwr}%) 整定{stab}s",
+                    done_w / w_total)
                 self.fan.set_power(pwr, self.fan_index)
-                wait_time = stabilization_time(ref_v)
-                print(f"Waiting {wait_time}s for stabilization...")
-                time.sleep(wait_time)
+                if not self._sleep_ticking(stab, done_w, w_total):
+                    print("\n[Cancel] Phase 3 中断。")
+                    return False
                 self.client.flush() # 非定常時のデータは捨てる
 
                 v_samples, vol_samples = [], []
-                start_t = time.time()
-                while time.time() - start_t < VAL_MEASUREMENT_DURATION:
+                mstart = time.time()
+                while time.time() - mstart < VAL_MEASUREMENT_DURATION:
                     data = self.client.get_data(timeout=0.5)
                     if data and data.anemo_valid:
-                        # print (data.voltage) #debug
                         v_samples.append(data.velocity)
                         vol_samples.append(data.voltage)
+                    self._progress(None, (done_w + stab
+                                          + min(time.time() - mstart, VAL_MEASUREMENT_DURATION)) / w_total)
                     time.sleep(1.0)
+                done_w += stab + VAL_MEASUREMENT_DURATION
 
                 avg_v = statistics.mean(v_samples) if v_samples else 0
                 avg_vol = statistics.mean(vol_samples) if vol_samples else 0
                 err = (abs(avg_v - pt["ref_velocity"]) / pt["ref_velocity"] * 100) if pt["ref_velocity"] > 0 else 0
                 print(f"Ref: {pt['ref_velocity']:.2f} m/s -> Meas: {avg_v:.3f} m/s, {avg_vol*1000:.1f} mV (Err: {err:.1f}%)")
                 phase3_results.append({"ref": pt["ref_velocity"], "meas": avg_v, "vol": avg_vol, "error": err})
-
-                prev_power = pwr
 
             # 計測は降順だったので、出力（JSON/プロット）のため風速昇順に並べ替える。
             phase3_results.sort(key=lambda r: r["ref"])
