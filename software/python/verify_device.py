@@ -150,11 +150,13 @@ def write_report(device_id, fw_version, data, judgments):
 # メイン
 # ============================================
 
-def main(midi_in=None, midi_out=None):
-    """動作確認を実行し 0(PASS)/1(FAIL) を返す。
+def main(midi_in=None, midi_out=None, expected_device_id=None):
+    """動作確認を実行し 0(PASS)/1(FAIL)/2(取り違え) を返す。
 
     midi_in / midi_out を指定すると、その MIDI ペア（esensor_discovery で確定した
     特定個体）に接続する。省略時は従来通り名前先頭一致で最初の1台に接続する。
+    expected_device_id を指定すると、接続先が本当にその個体かを get_device_id で
+    照合し、不一致なら 2 を返す（MIDI名の解決ブレによる取り違え対策）。
     """
     client = ESensorClient()
     connected = (client.open_ports(midi_in, midi_out)
@@ -170,6 +172,13 @@ def main(midi_in=None, midi_out=None):
         if device_id is None:
             print("Error: Could not retrieve device ID.", file=sys.stderr)
             return 1
+
+        # 本人確認: 期待した個体と違うポートに繋がっていたら中止(取り違え対策)
+        if (expected_device_id is not None
+                and device_id.upper() != expected_device_id.upper()):
+            print(f"Error: expected {expected_device_id} but connected to "
+                  f"{device_id}.", file=sys.stderr)
+            return 2
 
         fw_version = (f"{version_tuple[0]}.{version_tuple[1]}.{version_tuple[2]}"
                       if version_tuple else "unknown")

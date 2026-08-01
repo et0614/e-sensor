@@ -170,7 +170,7 @@ _REPORT_LOCK = threading.Lock()
 class AnemometerCalibrator:
     def __init__(self, midi_in=None, midi_out=None, fan_index=1,
                  calibration_points=None, validation_points=None,
-                 calibrator_id=CALIBRATOR_ID,
+                 calibrator_id=CALIBRATOR_ID, expected_device_id=None,
                  on_progress=None, on_abnormal=None, should_cancel=None):
         """
         引数を省略すると従来通り（名前先頭一致で接続・fan1・モジュールの
@@ -197,6 +197,9 @@ class AnemometerCalibrator:
         self.validation_points = (validation_points
                                   if validation_points is not None else VALIDATION_POINTS)
         self.calibrator_id = calibrator_id
+        # 実測に使う接続が本当にこの個体か照合するための期待 device_id(取り違え対策)。
+        self.expected_device_id = expected_device_id
+        self.wrong_device = False   # 本人確認で取り違えを検出したら True
         self.on_progress = on_progress
         self.on_abnormal = on_abnormal
         self.should_cancel = should_cancel
@@ -262,6 +265,15 @@ class AnemometerCalibrator:
             if not hash_id:
                 print("Warning: Could not retrieve Device ID.")
                 hash_id = "UNKNOWN"
+
+            # 本人確認: 実測に使うこの接続が期待した個体か照合(MIDI名の解決ブレ対策)。
+            # 追加の往復は無し(上の get_device_id を再利用)。不一致なら測定に入らず中止。
+            if (self.expected_device_id is not None and hash_id != "UNKNOWN"
+                    and hash_id.upper() != self.expected_device_id.upper()):
+                self.wrong_device = True
+                print(f"Error: 期待した個体 {self.expected_device_id} ではなく "
+                      f"{hash_id} に接続。取り違えのため校正を中止します。")
+                return False
 
             self.client.start_measurement()
 

@@ -27,6 +27,7 @@ matplotlib.use('Agg')
 
 import esensor_discovery as disc
 import verify_device
+from e_sensor import ESensorClient
 from calibrate_coefficients import (
     AnemometerCalibrator, CALIBRATOR_PROFILES, OUTPUT_DIR,
 )
@@ -95,6 +96,9 @@ class CalibrationGUI:
         # 割当を拒否した(ダイアログでキャンセルした)ポートは、抜くまで再度聞かない。
         self._skip_ports = set()
         self._dialog_open = False
+        # 取り違え防止: 実行中ワーカーが確定・使用中の device_id 集合。
+        self._claimed = set()
+        self._claim_lock = threading.Lock()
         self._build_ui()
         # USB監視は別スレッドで回し、結果を after で main へ反映する。
         self._stop = threading.Event()
@@ -270,56 +274,100 @@ class CalibrationGUI:
         t.worker = threading.Thread(target=self._run_worker, args=(t,), daemon=True)
         t.worker.start()
 
+    def _resolve_verified_pair(self, device_id, attempts=3):
+        """device_id に一致することを実接続で確認済みの MIDI ペアを返す(無ければ None)。
+        MIDI名の解決ブレ(接続直後の列挙揺れ)に備え、find_midi_pair で得た候補を実際に
+        開いて CMD_REQ_ID で本人確認し、不一致なら再識別してリトライする。"""
+        for _ in range(attempts):
+            if self._stop.is_set():
+                return None
+            pair = disc.find_midi_pair(device_id)
+            if pair is not None and self._pair_is(pair, device_id):
+                return pair
+            time.sleep(0.3)
+        return None
+
+    def _pair_is(self, pair, device_id):
+        """pair のポートを実際に開いて device_id が一致するか短時間で確認する。"""
+        c = ESensorClient()
+        if not c.open_ports(pair.in_name, pair.out_name):
+            return False
+        try:
+            got = c.get_device_id()
+        except Exception:
+            got = None
+        finally:
+            c.close()
+        return got is not None and got.upper() == device_id.upper()
+
     def _run_worker(self, t):
         device_id = t.present_device_id
         try:
-            # 1) 対象個体の MIDI ペアを(開く直前に)再識別する
+            # 1) 対象個体の MIDI ペアを再識別し、実接続で本人確認する(名前解決のブレ対策)
             self._ui(lambda: self._set(t, 'verifying', 'MIDIポート識別中...', 0.01))
-            pair = disc.find_midi_pair(device_id)
+            pair = self._resolve_verified_pair(device_id)
             if pair is None:
-                self._ui(lambda: self._set(t, 'failed', 'MIDI識別失敗(個体が見つからない)'))
+                self._ui(lambda: self._set(t, 'failed', 'MIDI識別失敗/取り違え(個体を確定できず)'))
                 return
             if t.cancel_event.is_set():
                 return
 
-            # 2) 動作確認(verify_device)。FAIL でも校正は続行する。
-            self._ui(lambda: self._set(t, 'verifying', '動作確認中...', 0.03))
-            rc = verify_device.main(pair.in_name, pair.out_name)
-            if t.cancel_event.is_set():
-                self._ui(lambda: self._set(t, 'cancelled', '中断しました'))
-                return
-            verify_str = 'PASS' if rc == 0 else 'FAIL'
+            # 取り違え防止: 同一 device_id を別風洞が使用中なら中止する
+            with self._claim_lock:
+                if device_id in self._claimed:
+                    self._ui(lambda: self._set(t, 'failed',
+                             f'取り違え防止: {device_id} は別の風洞が使用中'))
+                    return
+                self._claimed.add(device_id)
+            try:
+                # 2) 動作確認(verify_device)。FAIL でも校正は続行(取り違えは別扱い)。
+                self._ui(lambda: self._set(t, 'verifying', '動作確認中...', 0.03))
+                rc = verify_device.main(pair.in_name, pair.out_name,
+                                        expected_device_id=device_id)
+                if rc == 2:
+                    self._ui(lambda: self._set(t, 'failed', '取り違え検出(verify)。中止しました'))
+                    return
+                if t.cancel_event.is_set():
+                    self._ui(lambda: self._set(t, 'cancelled', '中断しました'))
+                    return
+                verify_str = 'PASS' if rc == 0 else 'FAIL'
 
-            # verify がポートを解放しきるまで少し待つ(単体版に倣う)
-            time.sleep(0.5)
+                # verify がポートを解放しきるまで少し待つ(単体版に倣う)
+                time.sleep(0.5)
 
-            # 3) 校正(この風洞の fan_index / プロファイル)
-            cfg = CALIBRATOR_PROFILES[t.id]
-            cal = AnemometerCalibrator(
-                midi_in=pair.in_name, midi_out=pair.out_name,
-                fan_index=t.fan_index,
-                calibration_points=cfg['calibration_points'],
-                validation_points=cfg['validation_points'],
-                calibrator_id=t.id,
-                on_progress=lambda msg, frac, tt=t: self._ui(
-                    lambda: self._set(tt, 'calibrating', msg,
-                                      None if frac is None else VERIFY_FRAC + (1 - VERIFY_FRAC) * frac)),
-                on_abnormal=lambda v, tt=t: self._ask_abnormal(tt, v),
-                should_cancel=t.cancel_event.is_set,
-            )
-            self._ui(lambda: self._set(t, 'calibrating', '校正中...', VERIFY_FRAC))
-            ok = cal.run_calibration(show_plot=False)
+                # 3) 校正(この風洞の fan_index / プロファイル)。実接続でも本人確認する。
+                cfg = CALIBRATOR_PROFILES[t.id]
+                cal = AnemometerCalibrator(
+                    midi_in=pair.in_name, midi_out=pair.out_name,
+                    fan_index=t.fan_index,
+                    calibration_points=cfg['calibration_points'],
+                    validation_points=cfg['validation_points'],
+                    calibrator_id=t.id,
+                    expected_device_id=device_id,
+                    on_progress=lambda msg, frac, tt=t: self._ui(
+                        lambda: self._set(tt, 'calibrating', msg,
+                                          None if frac is None else VERIFY_FRAC + (1 - VERIFY_FRAC) * frac)),
+                    on_abnormal=lambda v, tt=t: self._ask_abnormal(tt, v),
+                    should_cancel=t.cancel_event.is_set,
+                )
+                self._ui(lambda: self._set(t, 'calibrating', '校正中...', VERIFY_FRAC))
+                ok = cal.run_calibration(show_plot=False)
 
-            if t.cancel_event.is_set():
-                self._ui(lambda: self._set(t, 'cancelled', '中断しました'))
-            elif ok:
-                def _done(tt=t, vs=verify_str):
-                    self._set(tt, 'done', f'完了 (動作確認 {vs})', 1.0)
-                    self._open_result(tt.id)   # 結果PNGを自動表示
-                self._ui(_done)
-            else:
-                self._ui(lambda: self._set(t, 'failed',
-                                           f'校正NG/中止 (動作確認 {verify_str})'))
+                if getattr(cal, 'wrong_device', False):
+                    self._ui(lambda: self._set(t, 'failed', '取り違え検出(校正)。中止しました'))
+                elif t.cancel_event.is_set():
+                    self._ui(lambda: self._set(t, 'cancelled', '中断しました'))
+                elif ok:
+                    def _done(tt=t, vs=verify_str):
+                        self._set(tt, 'done', f'完了 (動作確認 {vs})', 1.0)
+                        self._open_result(tt.id)   # 結果PNGを自動表示
+                    self._ui(_done)
+                else:
+                    self._ui(lambda: self._set(t, 'failed',
+                                               f'校正NG/中止 (動作確認 {verify_str})'))
+            finally:
+                with self._claim_lock:
+                    self._claimed.discard(device_id)
         except Exception as e:
             self._ui(lambda: self._set(t, 'failed', f'例外: {e}'))
         finally:
