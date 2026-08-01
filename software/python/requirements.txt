@@ -1,2 +1,13 @@
+# Install under Python 3.12 — python-rtmidi has no wheel for 3.14 and would need a C++ compiler.
+#   py -3.12 -m pip install -r requirements.txt
+
+# MIDI transport (E-Sensor USB-MIDI / SysEx)
 mido
 python-rtmidi
+
+# Calibration fitting & report plots
+numpy
+matplotlib
+
+# Wind-tunnel fan control: provides the `liquidctl` CLI used by quadro_fan_controller.py
+liquidctl

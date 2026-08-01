@@ -257,6 +257,25 @@ class ESensorClient:
         return False
 
 
+    def open_ports(self, in_name: str, out_name: str) -> bool:
+        """明示した MIDI in/out ポート名で接続する（複数台環境用）。
+
+        connect() は名前が "E-Sensor" を含む最初の1台を開くため、同型の
+        E-Sensor が複数挿さっていると個体を選べない。esensor_discovery で
+        CMD_REQ_ID 応答から確定した特定個体の (in,out) ペアをここに渡して開く。
+        """
+        try:
+            mido.set_backend('mido.backends.rtmidi')
+        except Exception:
+            pass
+        try:
+            self.inport = mido.open_input(in_name)
+            self.outport = mido.open_output(out_name)
+            return True
+        except (IOError, OSError):
+            return False
+
+
     def close(self):
         """接続を閉じる"""
         if self.inport: self.inport.close()
