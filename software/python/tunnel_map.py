@@ -39,11 +39,17 @@ from kanomax import KanomaxClient
 # ==========================================
 FAN_INDEX = 1                 # この風洞のファン番号（Quadro fan1..4）
 
-KANOMAX_MAX_MPS = 5.0         # Kanomax の測定上限。これを超える出力は測らない。
+KANOMAX_MAX_MPS = 5.0         # Kanomax の測定上限（参考値。プロット注記に使用）。
 
-# 掃引するファン出力[%]（昇順）。低速を密に、6〜9%で発停閾値を探る。
-# ★max は v<=5.0 に収まる範囲に（プロファイル上 fan69≒5.0m/s。既定は余裕をみて55%）。
-FAN_LEVELS = [0, 4, 6, 7, 8, 10, 12, 14, 16, 18, 21, 25, 30, 40, 55]
+# 昇順掃引で真風速がこれ以上に達したら、それ以上のファン出力は測らない。
+# 5.0ちょうど〜少しオーバー(≒5.1)で打ち切るための閾値（高出力側は曲線が読めないので
+# 固定fanでなく“到達した真風速”で打ち切る）。
+STOP_ABOVE_MPS = 5.0
+
+# 掃引するファン出力[%]（昇順）。低速を密に、上は 5.0m/s 到達まで（STOP_ABOVE_MPSで自動打切り）。
+# 実測(2026-08-17): 4%は激しい発停(0.5⇄5.5m/s)で使用不可、6%は安定(≒0.13m/s) → 下限は 6%。
+# 高出力側(50/60/68/73/78)は 5.0m/s に達した段で打ち切られる（全部は測らない）。
+FAN_LEVELS = [0, 6, 7, 8, 10, 12, 14, 16, 18, 21, 25, 30, 40, 50, 60, 68, 73, 78]
 
 # 各段の保持[s]（安定化 settle + 計測 meas）。低速ほど長く。無人前提。
 DWELL = {          # (fan出力の上限, settle_s, meas_s) を小さい順に
@@ -215,10 +221,20 @@ def main():
             collect(kano, WARMUP_SECONDS)
 
         print(f"\n掃引レベル: {levels}" + ("  [QUICK]" if quick else ""))
-        # 昇順 → 降順
-        plan = [(p, "up") for p in levels] + [(p, "down") for p in reversed(levels)]
-        for power, direction in plan:
-            r = measure_level(fan, kano, power, direction, quick)
+        # 昇順（真風速が STOP_ABOVE_MPS に達したら以降の上位fanは省略）
+        achieved = []
+        for power in levels:
+            r = measure_level(fan, kano, power, "up", quick)
+            if r is not None:
+                rows.append(r)
+                achieved.append(power)
+                if r["v_mean"] >= STOP_ABOVE_MPS:
+                    print(f"  → {r['v_mean']:.2f} m/s が上限目標({STOP_ABOVE_MPS})到達。"
+                          f"これ以上のファン出力は測定しない。")
+                    break
+        # 降順（実際に測った段を逆順で）
+        for power in reversed(achieved):
+            r = measure_level(fan, kano, power, "down", quick)
             if r is not None:
                 rows.append(r)
     except KeyboardInterrupt:
