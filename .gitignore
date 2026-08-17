@@ -379,6 +379,7 @@ paket-files/
 software/python/calibration_data/
 software/python/verify_reports/
 software/python/directionality_data/
+software/python/tunnel_map_data/
 
 # Cake - Uncomment if you are using it
 #tools/**
