@@ -71,7 +71,7 @@ WARMUP_FAN_POWER = None    # 暖機時のファン出力%。None なら scan 点
 # 校正点に加えて計測する追加点（校正点間のギャップ埋め）。CALIBRATOR_PROFILES 本体は
 # 変更せず、この scan だけの点として足す。※CALIBRATOR_ID に整合する値にすること。
 EXTRA_POINTS = [
-    {"fan_power": 21, "ref_velocity": 1.24},   # 0.52〜2.76 の間（Range B 相当・風洞1）
+    {"fan_power": 21, "ref_velocity": 1.12},   # 0.48〜2.54 の間（Range B 相当・風洞1, Kanomax実測）
 ]
 
 # 個体指定（任意）。単体接続なら None のまま（名前先頭一致で1台に接続）。

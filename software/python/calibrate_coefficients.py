@@ -25,35 +25,39 @@ CALIBRATOR_ID = 1
 
 CALIBRATOR_PROFILES = {
     1: {
+        # 2026-08-17: Kanomax(6543) 実測に更新（昇降平均・真値基準, tunnel_map.py）。
+        # 旧値は中高速で ~8〜10% 高かった。上端は fan78≒5.27 m/s（5.0を内挿でカバー）。
         "calibration_points": [
             {"fan_power": 0,  "ref_velocity": 0.00},
-            {"fan_power": 8,  "ref_velocity": 0.23},
-            {"fan_power": 12, "ref_velocity": 0.52},
-            {"fan_power": 40, "ref_velocity": 2.76},
-            {"fan_power": 69, "ref_velocity": 5.00},
+            {"fan_power": 8,  "ref_velocity": 0.22},
+            {"fan_power": 12, "ref_velocity": 0.48},
+            {"fan_power": 40, "ref_velocity": 2.54},
+            {"fan_power": 78, "ref_velocity": 5.27},
         ],
         "validation_points": [
             {"fan_power": 0,  "ref_velocity": 0.00},   # 再現性（下端）
-            {"fan_power": 10, "ref_velocity": 0.37},   # 補間 Range A
-            {"fan_power": 21, "ref_velocity": 1.24},   # 補間 Range B
-            {"fan_power": 53, "ref_velocity": 3.75},   # 補間 Range C
-            {"fan_power": 69, "ref_velocity": 5.00},   # 再現性（上端）
+            {"fan_power": 10, "ref_velocity": 0.35},   # 補間 Range A
+            {"fan_power": 21, "ref_velocity": 1.12},   # 補間 Range B
+            {"fan_power": 60, "ref_velocity": 3.98},   # 補間 Range C
+            {"fan_power": 78, "ref_velocity": 5.27},   # 再現性（上端）
         ],
     },
     2: {
+        # 2026-08-17: Kanomax(6543) 実測に更新（昇降平均・真値基準, tunnel_map.py fan_index=2）。
+        # 上端は fan78≒5.23 m/s（5.0を内挿でカバー）。風洞1と同じfanレベルで差はref_velocityのみ。
         "calibration_points": [
             {"fan_power": 0,  "ref_velocity": 0.00},
-            {"fan_power": 8,  "ref_velocity": 0.23},
-            {"fan_power": 12, "ref_velocity": 0.50},
-            {"fan_power": 38, "ref_velocity": 2.73},
-            {"fan_power": 67, "ref_velocity": 5.03},
+            {"fan_power": 8,  "ref_velocity": 0.24},
+            {"fan_power": 12, "ref_velocity": 0.51},
+            {"fan_power": 40, "ref_velocity": 2.57},
+            {"fan_power": 78, "ref_velocity": 5.23},
         ],
         "validation_points": [
             {"fan_power": 0,  "ref_velocity": 0.00},   # 再現性（下端）
-            {"fan_power": 10, "ref_velocity": 0.32},   # 補間 Range A
-            {"fan_power": 19, "ref_velocity": 1.09},   # 補間 Range B
-            {"fan_power": 51, "ref_velocity": 3.80},   # 補間 Range C
-            {"fan_power": 67, "ref_velocity": 5.03},   # 再現性（上端）
+            {"fan_power": 10, "ref_velocity": 0.38},   # 補間 Range A
+            {"fan_power": 21, "ref_velocity": 1.17},   # 補間 Range B
+            {"fan_power": 60, "ref_velocity": 3.99},   # 補間 Range C
+            {"fan_power": 78, "ref_velocity": 5.23},   # 再現性（上端）
         ],
     },
 }
