@@ -66,7 +66,9 @@ EXTRA_SETTLE_FIRST_POINT_S = 0.0
 # 本測定前の暖機（捨て運転）。前回 run で開始側が低く出る暖機不足ドリフトが見られたため、
 # 風速計/風洞を熱平衡へ近づけてから計測に入る。0 で無効。
 WARMUP_SECONDS = 120
-WARMUP_FAN_POWER = None    # 暖機時のファン出力%。None なら scan 点の最大出力を使う。
+# 暖機時のファン出力%。None は「scan点の最大fan」を使うが、上端が fan78(≒5.27m/s)に
+# なったため爆音になる。中速(40%≒2.5m/s)に固定してgentleに暖機する。
+WARMUP_FAN_POWER = 40
 
 # 校正点に加えて計測する追加点（校正点間のギャップ埋め）。CALIBRATOR_PROFILES 本体は
 # 変更せず、この scan だけの点として足す。※CALIBRATOR_ID に整合する値にすること。
@@ -118,13 +120,16 @@ def _sleep_pumping(seconds, fig):
         time.sleep(min(0.1, rem))
 
 
-def ask_action(is_last: bool, next_target, fig=None) -> str:
+def ask_action(is_last: bool, next_target, fig=None, partial=False) -> str:
     """1角度の計測後の判定。ビープしてから 'next' / 'redo' / 'abort' を返す。
     GUI表示中(Windows)は input() でブロックせず、プロットを生かしたまま単キーで受ける
     （[Enter]/[r]/[q]）。それ以外は通常の行入力にフォールバック。"""
     notify_done()  # 「この角度が終わった」の合図
     if is_last:
-        prompt = ("\n>>> ビープ。全方位完了。[Enter]=終了 / "
+        prompt = ("\n>>> ビープ。計測完了。[Enter]=終了 / "
+                  "[r]=この角度を再計測 / [q]=中断 : ")
+    elif partial:   # 部分再測: 次角度の治具合わせは計測前プロンプトで行う
+        prompt = ("\n>>> ビープ。[Enter]=次の角度へ / "
                   "[r]=この角度を再計測 / [q]=中断 : ")
     else:
         prompt = (f"\n>>> ビープ。[Enter]=+{ANGLE_STEP_DEG}°回して{next_target}°へ / "
@@ -368,6 +373,11 @@ def main():
         print(f"CALIBRATOR_ID={CALIBRATOR_ID} は未定義です。", file=sys.stderr)
         return 1
 
+    # CLIで角度を指定すると「その角度だけ」測る部分再測モード（例: py directionality_scan.py 180）。
+    # 治具は各角度の前に手動で合わせる。ドリフト確認は行わない。
+    only_angles = [int(a) for a in sys.argv[1:] if a.lstrip("-").isdigit()]
+    partial = len(only_angles) > 0
+
     # 校正点 ＋ EXTRA_POINTS（ギャップ埋め）。検証用の点群は使わない。
     # 計測は降順、集計・図は昇順で扱う。同一風速は EXTRA_POINTS 側で上書き。
     base = CALIBRATOR_PROFILES[CALIBRATOR_ID]["calibration_points"]
@@ -377,7 +387,8 @@ def main():
     scan_points = list(merged.values())
     cal_desc = sorted(scan_points, key=lambda p: p["ref_velocity"], reverse=True)
     speeds = sorted(merged.keys())
-    primary_angles = [ANGLE_STEP_DEG * k for k in range(N_ANGLES)]  # 0,45,…,315
+    primary_angles = only_angles if partial else [ANGLE_STEP_DEG * k for k in range(N_ANGLES)]
+    do_drift = DO_DRIFT_CHECK and not partial
 
     client = ESensorClient()
     fan = QuadroFanController()
@@ -429,8 +440,11 @@ def main():
         print("\n" + "=" * 60)
         print(f" 指向性スキャン開始  device={device_id}  fw={fw_str}")
         print(f" 風洞={CALIBRATOR_ID}  風速点={speeds}  方位={primary_angles}"
-              + ("（+末尾0°ドリフト）" if DO_DRIFT_CHECK else ""))
-        print(" ※現在、治具が 0°（校正角）に合っていることを確認してください。")
+              + ("（部分再測）" if partial else ("（+末尾0°ドリフト）" if do_drift else "")))
+        if partial:
+            print(" ※部分再測モード: 各角度の前に治具を手動で合わせてください。")
+        else:
+            print(" ※現在、治具が 0°（校正角）に合っていることを確認してください。")
         print("=" * 60)
 
         # 暖機（捨て運転）: 前回 run の「開始側が低い」暖機不足ドリフト対策。
@@ -446,13 +460,19 @@ def main():
 
         # --- 計測プラン（累積角度）---
         plan = [(a, f"{a}°") for a in primary_angles]
-        if DO_DRIFT_CHECK:
+        if do_drift:
             plan.append((360, "360°(=0°/ドリフト確認)"))
 
         aborted = False
         for idx, (cum_angle, label) in enumerate(plan):
             is_last = (idx == len(plan) - 1)
             next_target = None if is_last else plan[idx + 1][0]
+            if partial:   # 部分再測: 各角度の前に手動で治具を合わせてもらう
+                try:
+                    input(f"\n>>> 治具を {cum_angle}° に合わせ、準備できたら Enter"
+                          f"（この角度を測ります）: ")
+                except (EOFError, KeyboardInterrupt):
+                    break
             while True:  # redo で同一角度を測り直せるループ
                 rows = measure_angle(client, fan, cal_desc, cum_angle, label, idx, fig)
                 # 同一角度の既存行を置き換える（redo 対応）
@@ -461,7 +481,7 @@ def main():
                 if fig is not None:
                     live_update(fig, ax1, ax2, all_rows, primary_angles, speeds, device_id)
 
-                action = ask_action(is_last, next_target, fig)
+                action = ask_action(is_last, next_target, fig, partial)
                 if action == "redo":
                     print("→ この角度を再計測します（治具は回さないでください）。")
                     continue
@@ -497,14 +517,16 @@ def main():
         "ambient_temp_c": ambient_t,
         "ambient_humidity_pct": ambient_h,
         "angle_step_deg": ANGLE_STEP_DEG,
-        "n_angles": N_ANGLES,
+        "n_angles": len(primary_angles) if partial else N_ANGLES,
         "speeds_mps": speeds,
         "warmup_seconds": WARMUP_SECONDS,
         "extra_points_mps": [p["ref_velocity"] for p in EXTRA_POINTS],
+        "partial_only_angles": only_angles if partial else None,
         "note": "calibration points + EXTRA_POINTS; coefficients NOT written",
     }
-    csv_path = OUTPUT_DIR / f"{device_id}_{ts}.csv"
-    png_path = OUTPUT_DIR / f"{device_id}_{ts}_polar.png"
+    suffix = ("_only" + "-".join(map(str, only_angles))) if partial else ""
+    csv_path = OUTPUT_DIR / f"{device_id}_{ts}{suffix}.csv"
+    png_path = OUTPUT_DIR / f"{device_id}_{ts}{suffix}_polar.png"
     write_csv(csv_path, all_rows, meta)
     print(f"\nCSV saved: {csv_path}")
 
