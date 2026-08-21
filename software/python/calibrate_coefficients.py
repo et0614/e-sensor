@@ -60,6 +60,43 @@ CALIBRATOR_PROFILES = {
             {"fan_power": 78, "ref_velocity": 5.23},   # 再現性（上端）
         ],
     },
+    3: {
+        # 2026-08-21: Kanomax(6543) 実測に更新（昇降平均・真値基準, tunnel_map.py fan_index=3）。
+        # 風洞1・2よりわずかに強く、fan73≒5.04 m/s で5.0到達（fan78は未測定）。
+        # 上端アンカーは fan73（≒5.04, 5.0を内挿でカバー）。
+        "calibration_points": [
+            {"fan_power": 0,  "ref_velocity": 0.00},
+            {"fan_power": 8,  "ref_velocity": 0.24},
+            {"fan_power": 12, "ref_velocity": 0.50},
+            {"fan_power": 40, "ref_velocity": 2.59},
+            {"fan_power": 73, "ref_velocity": 5.04},
+        ],
+        "validation_points": [
+            {"fan_power": 0,  "ref_velocity": 0.00},   # 再現性（下端）
+            {"fan_power": 10, "ref_velocity": 0.36},   # 補間 Range A
+            {"fan_power": 21, "ref_velocity": 1.17},   # 補間 Range B
+            {"fan_power": 60, "ref_velocity": 4.05},   # 補間 Range C
+            {"fan_power": 73, "ref_velocity": 5.04},   # 再現性（上端）
+        ],
+    },
+    4: {
+        # 2026-08-21: Kanomax(6543) 実測に更新（昇降平均・真値基準, tunnel_map.py fan_index=4）。
+        # 4基中で最も強く、fan78≒5.40 m/s（上端は fan78 で取得）。
+        "calibration_points": [
+            {"fan_power": 0,  "ref_velocity": 0.00},
+            {"fan_power": 8,  "ref_velocity": 0.23},
+            {"fan_power": 12, "ref_velocity": 0.49},
+            {"fan_power": 40, "ref_velocity": 2.58},
+            {"fan_power": 78, "ref_velocity": 5.40},
+        ],
+        "validation_points": [
+            {"fan_power": 0,  "ref_velocity": 0.00},   # 再現性（下端）
+            {"fan_power": 10, "ref_velocity": 0.35},   # 補間 Range A
+            {"fan_power": 21, "ref_velocity": 1.15},   # 補間 Range B
+            {"fan_power": 60, "ref_velocity": 4.02},   # 補間 Range C
+            {"fan_power": 78, "ref_velocity": 5.40},   # 再現性（上端）
+        ],
+    },
 }
 
 if CALIBRATOR_ID not in CALIBRATOR_PROFILES:
