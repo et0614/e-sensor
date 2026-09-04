@@ -194,26 +194,50 @@
         <ScrollView Grid.Column="{OnIdiom Phone=0, Default=1}"
                     Grid.Row="0"
                     Padding="0">
-            <FlexLayout Wrap="Wrap" JustifyContent="SpaceEvenly" Padding="5">
-                <FlexLayout.Triggers>
-                    <DataTrigger TargetType="FlexLayout" Binding="{Binding IsDataFresh}" Value="False">
+            <!-- 主役=風速／脇役=その他 の 2 段構成。風速は自作・自前校正の中核センサであり、
+                 温湿度(汎用)・照度(拡散板なし)・CO2(非NDIR)・PMV/PPD(放射温度未測定の簡易値)は
+                 付随情報という位置づけ。データ鮮度が落ちたら全体を半透明化する。
+                 レイアウトは 2 列均等の Grid。脇役は各セルいっぱいに広げ、ヒーロー(風速)は
+                 2 列ぶんを占有(ColumnSpan=2)することで、両者の横幅をぴったり揃える。カード間隔は
+                 各カードの Margin(8) が作るため Grid 側の Spacing/Padding は 0。 -->
+            <Grid Padding="0" ColumnSpacing="0" RowSpacing="0"
+                  ColumnDefinitions="*,*"
+                  RowDefinitions="Auto,Auto,Auto,Auto">
+                <Grid.Triggers>
+                    <DataTrigger TargetType="Grid" Binding="{Binding IsDataFresh}" Value="False">
                         <Setter Property="Opacity" Value="0.5" />
                     </DataTrigger>
-                    <DataTrigger TargetType="FlexLayout" Binding="{Binding IsDataFresh}" Value="True">
+                    <DataTrigger TargetType="Grid" Binding="{Binding IsDataFresh}" Value="True">
                         <Setter Property="Opacity" Value="1.0" />
                     </DataTrigger>
-                </FlexLayout.Triggers>
+                </Grid.Triggers>
 
-                <viewmodels:SensorCard Title="{x:Static res:Strings.Temperature}" Value="{Binding Temperature}" Unit="C" BadgeText="{Binding TempHumBadgeText}" InfoBadgeText="{Binding TempHumInfoBadgeText}" InfoBadgeCommand="{Binding ShowCorrectionInfoCommand}" />
-                <viewmodels:SensorCard Title="{x:Static res:Strings.RelativeHumidity}" Value="{Binding Humidity}" Unit="%" BadgeText="{Binding TempHumBadgeText}" InfoBadgeText="{Binding TempHumInfoBadgeText}" InfoBadgeCommand="{Binding ShowCorrectionInfoCommand}" />
-                <viewmodels:SensorCard Title="{x:Static res:Strings.Velocity}" Value="{Binding Velocity}" Unit="m/s" BadgeText="{Binding VelocityBadgeText}" />
-                <viewmodels:SensorCard Title="{x:Static res:Strings.Illuminance}" Value="{Binding Illuminance}" Unit="lux" />
-                <viewmodels:SensorCard Title="{x:Static res:Strings.CO2Level}" Value="{Binding Co2Level}" Unit="ppm" BadgeText="{Binding Co2BadgeText}" />
-                <!-- PMV（予測温冷感申告）。値=PMV、Unit スロットに PPD[%] を併記する。
-                     歯車アイコン(SettingsCommand)から着衣量/代謝量を設定する。放射温度=気温と
-                     仮定した簡易計算のため、風速計 OFF 時は算出せず未表示（ダッシュ）とする。 -->
-                <viewmodels:SensorCard Title="{x:Static res:Strings.PmvTitle}" Value="{Binding Pmv}" Unit="{Binding PmvPpd}" InfoBadgeText="{Binding PmvSetting}" SettingsCommand="{Binding OpenPmvSettingsCommand}" />
-            </FlexLayout>
+                <!-- 主役：風速。2 列ぶんに広げ(ColumnSpan=2)・特大フォントで最上部に大きく表示する。
+                     高さは内容ぴったり(CardHeightRequest=-1)にして、特大フォントでも単位(m/s)が
+                     下端で見切れないようにする。脇役より一回り大きい内側余白(20)で存在感を出す。 -->
+                <viewmodels:SensorCard Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
+                                       Title="{x:Static res:Strings.Velocity}"
+                                       Value="{Binding Velocity}"
+                                       Unit="m/s"
+                                       BadgeText="{Binding VelocityBadgeText}"
+                                       ValueFontSize="60"
+                                       CardWidthRequest="-1"
+                                       CardHeightRequest="-1"
+                                       CardPadding="20" />
+
+                <!-- 脇役：付随センサ。各セルいっぱいに広げ(CardWidthRequest=-1)、高さは内容ぴったり
+                     (CardHeightRequest=-1)＋内側余白を詰めて(CardPadding=10)、6 項目をできるだけ
+                     一望できるようにする。幅が広がることでタイトルが 1 行に収まり縦も縮む。 -->
+                <viewmodels:SensorCard Grid.Row="1" Grid.Column="0" Title="{x:Static res:Strings.Temperature}" Value="{Binding Temperature}" Unit="C" BadgeText="{Binding TempHumBadgeText}" InfoBadgeText="{Binding TempHumInfoBadgeText}" InfoBadgeCommand="{Binding ShowCorrectionInfoCommand}" CardWidthRequest="-1" CardHeightRequest="-1" CardPadding="12,10" />
+                <viewmodels:SensorCard Grid.Row="1" Grid.Column="1" Title="{x:Static res:Strings.RelativeHumidity}" Value="{Binding Humidity}" Unit="%" BadgeText="{Binding TempHumBadgeText}" InfoBadgeText="{Binding TempHumInfoBadgeText}" InfoBadgeCommand="{Binding ShowCorrectionInfoCommand}" CardWidthRequest="-1" CardHeightRequest="-1" CardPadding="12,10" />
+                <viewmodels:SensorCard Grid.Row="2" Grid.Column="0" Title="{x:Static res:Strings.Illuminance}" Value="{Binding Illuminance}" Unit="lux" CardWidthRequest="-1" CardHeightRequest="-1" CardPadding="12,10" />
+                <viewmodels:SensorCard Grid.Row="2" Grid.Column="1" Title="{x:Static res:Strings.CO2Level}" Value="{Binding Co2Level}" Unit="ppm" BadgeText="{Binding Co2BadgeText}" CardWidthRequest="-1" CardHeightRequest="-1" CardPadding="12,10" />
+                <!-- PMV（予測温冷感申告）。歯車(SettingsCommand)から着衣量/代謝量を設定する。
+                     放射温度=気温と仮定した簡易計算のため、風速計 OFF 時はダッシュ表示。PPD は
+                     右隣の独立カードに分離した（脇役を 6 枚にして 2×3 を埋めるため）。 -->
+                <viewmodels:SensorCard Grid.Row="3" Grid.Column="0" Title="{x:Static res:Strings.PmvTitle}" Value="{Binding Pmv}" Unit="" InfoBadgeText="{Binding PmvSetting}" SettingsCommand="{Binding OpenPmvSettingsCommand}" CardWidthRequest="-1" CardHeightRequest="-1" CardPadding="12,10" />
+                <viewmodels:SensorCard Grid.Row="3" Grid.Column="1" Title="{x:Static res:Strings.PpdTitle}" Value="{Binding Ppd}" Unit="%" CardWidthRequest="-1" CardHeightRequest="-1" CardPadding="12,10" />
+            </Grid>
         </ScrollView>
 
         <Grid  Grid.Column="{OnIdiom Phone=0, Default=1}" Grid.Row="0"

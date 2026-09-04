@@ -222,6 +222,9 @@
   <data name="PmvTitle" xml:space="preserve">
     <value>PMV</value>
   </data>
+  <data name="PpdTitle" xml:space="preserve">
+    <value>PPD</value>
+  </data>
   <data name="PmvSettingsTitle" xml:space="preserve">
     <value>PMV Settings</value>
   </data>

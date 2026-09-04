@@ -39,6 +39,22 @@ public partial class SensorCard : ContentView
       BindableProperty.Create(nameof(SettingsCommand), typeof(ICommand), typeof(SensorCard), null,
           propertyChanged: OnSettingsCommandChanged);
 
+  // 値テキストのフォントサイズ。既定 36。主役（風速）カードでは大きくして際立たせる。
+  public static readonly BindableProperty ValueFontSizeProperty =
+      BindableProperty.Create(nameof(ValueFontSize), typeof(double), typeof(SensorCard), 36.0);
+
+  // カードの幅・高さ。既定は従来の脇役サイズ 160x140。主役カードは幅 -1(=親いっぱいに
+  // フィル) と高さ増で拡大する。
+  public static readonly BindableProperty CardWidthRequestProperty =
+      BindableProperty.Create(nameof(CardWidthRequest), typeof(double), typeof(SensorCard), 160.0);
+
+  public static readonly BindableProperty CardHeightRequestProperty =
+      BindableProperty.Create(nameof(CardHeightRequest), typeof(double), typeof(SensorCard), 140.0);
+
+  // カード内側の余白。既定 16。脇役カードを詰めて縦を稼ぎたいときに小さくする。
+  public static readonly BindableProperty CardPaddingProperty =
+      BindableProperty.Create(nameof(CardPadding), typeof(Thickness), typeof(SensorCard), new Thickness(16));
+
   public string Title
   {
     get => (string)GetValue(TitleProperty);
@@ -79,6 +95,30 @@ public partial class SensorCard : ContentView
   {
     get => (ICommand)GetValue(SettingsCommandProperty);
     set => SetValue(SettingsCommandProperty, value);
+  }
+
+  public double ValueFontSize
+  {
+    get => (double)GetValue(ValueFontSizeProperty);
+    set => SetValue(ValueFontSizeProperty, value);
+  }
+
+  public double CardWidthRequest
+  {
+    get => (double)GetValue(CardWidthRequestProperty);
+    set => SetValue(CardWidthRequestProperty, value);
+  }
+
+  public double CardHeightRequest
+  {
+    get => (double)GetValue(CardHeightRequestProperty);
+    set => SetValue(CardHeightRequestProperty, value);
+  }
+
+  public Thickness CardPadding
+  {
+    get => (Thickness)GetValue(CardPaddingProperty);
+    set => SetValue(CardPaddingProperty, value);
   }
 
   public SensorCard()

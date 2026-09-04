@@ -372,6 +372,12 @@ namespace E_Sensor.Resources {
             }
         }
 
+        public static string PpdTitle {
+            get {
+                return ResourceManager.GetString("PpdTitle", resourceCulture);
+            }
+        }
+
         public static string PmvSettingsTitle {
             get {
                 return ResourceManager.GetString("PmvSettingsTitle", resourceCulture);

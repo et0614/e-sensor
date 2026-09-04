@@ -7,9 +7,9 @@
             Stroke="#D1E4F3"
             BackgroundColor="White"
             Margin="8"
-            Padding="16"
-            WidthRequest="160"
-            HeightRequest="140">
+            Padding="{Binding CardPadding, Source={x:Reference this}}"
+            WidthRequest="{Binding CardWidthRequest, Source={x:Reference this}}"
+            HeightRequest="{Binding CardHeightRequest, Source={x:Reference this}}">
 
 
         <Border.Shadow>
@@ -76,7 +76,7 @@
 
             <Label x:Name="ValueLabel"
                    Text="{Binding Value, Source={x:Reference this}}"
-                   FontSize="36"
+                   FontSize="{Binding ValueFontSize, Source={x:Reference this}}"
                    FontAttributes="Bold"
                    HorizontalOptions="Center" />
 

@@ -80,9 +80,10 @@ public partial class MainViewModel : ObservableObject
   [ObservableProperty]
   private string _pmv = "---";
 
-  /// <summary>PMV カードの Unit スロットに表示する PPD[%]（例 "PPD 7%"。算出不可時は空）</summary>
+  /// <summary>PPD（予測不満足者率）[%] の表示文字列（例 "7"。算出不可時は "---"）</summary>
+  /// <remarks>PMV から直接算出される対の指標。PMV カードとは別の脇役カードで併記する。</remarks>
   [ObservableProperty]
-  private string _pmvPpd = string.Empty;
+  private string _ppd = "---";
 
   /// <summary>PMV カードの情報バッジに常時表示する現在の着衣量/代謝量（例 "0.7clo 1.2met"）</summary>
   [ObservableProperty]
@@ -721,7 +722,7 @@ public partial class MainViewModel : ObservableObject
     if (!usable)
     {
       Pmv = "---";
-      PmvPpd = string.Empty;
+      Ppd = "---";
       return;
     }
 
@@ -735,7 +736,7 @@ public partial class MainViewModel : ObservableObject
     double ppd = FangerModel.GetPPD(pmv);
 
     Pmv = pmv.ToString("+0.0;-0.0;0.0");                 // 符号付き（例 +0.3 / -0.5 / 0.0）
-    PmvPpd = $"PPD {ppd:F0}%";
+    Ppd = ppd.ToString("F0");                            // 例 "7"（Unit スロットに "%" を付す）
   }
 
   /// <summary>
