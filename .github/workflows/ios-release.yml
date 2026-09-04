@@ -1,0 +1,165 @@
+# iOS App Store 提出用ビルド (Mac 不要のリモートリリース用)
+#
+# 手動トリガ (Actions タブ → ios-release → Run workflow) で実行し、
+# .ipa をビルドして TestFlight (App Store Connect) へアップロードする。
+# 以降の審査提出は App Store Connect の Web から行う。
+#
+# 必要な GitHub Secrets (Settings → Secrets and variables → Actions):
+#   APPLE_CERT_P12_BASE64   : Apple Distribution 証明書+秘密鍵 (.p12) の base64
+#   APPLE_CERT_PASSWORD     : 上記 p12 のパスワード
+#   APPLE_PROVISION_BASE64  : esensor_dist_ci.mobileprovision の base64
+#   APPSTORE_API_KEY_P8     : App Store Connect API キー (.p8) の中身 (テキスト)
+#   APPSTORE_API_KEY_ID     : 同 Key ID (例 ABC123DEFG)
+#   APPSTORE_ISSUER_ID      : 同 Issuer ID (UUID)
+#
+# 署名は csproj の設定を CI 用に上書きする:
+#   CodesignProvision=esensor_dist_ci (CI 専用プロファイル。研究室 Mac の
+#   E-Sensor Distribution 2026 環境には影響しない)
+
+name: ios-release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-upload:
+    # macos-15 は Xcode 26.3 (iOS 26.2 SDK) 止まりで、.NET 10 の iOS バインディング
+    # (iOS 26.4+ の API を含む) と合わず MT4162 で失敗する。より新しい Xcode を持つ
+    # macos-26 を使う。
+    runs-on: macos-26
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # .NET 10 の iOS バインディングは iOS 26 SDK を要求するため、ランナー既定の
+      # Xcode (iOS 18.5 SDK) ではなくインストール済みの最新版を選ぶ。
+      # (バージョン直書きにしないことでランナーイメージの更新に追従する)
+      - name: Select latest usable Xcode
+        run: |
+          ls -d /Applications/Xcode*.app
+          # 新しい順に候補を走査し、「ビルドが実際に使う最終状態」で検証して選ぶ:
+          # xcode-select + runFirstLaunch まで済ませてから xcrun で必須ツール一式を
+          # 引けるか確認する。事前の実体チェックが通っても runFirstLaunch 後に
+          # xcodebuild -find が壊れる個体があった (26.6.0 の clang++) ため、
+          # 事前チェックではなく最終状態そのもので判定し、駄目なら次の候補へ進む。
+          SELECTED=""
+          for x in $(ls -d /Applications/Xcode_*.app | grep -vi beta | sort -rV); do
+            DEV="$x/Contents/Developer"
+            if ! ls "$DEV/Platforms/iPhoneOS.platform/Developer/SDKs" 2>/dev/null | grep -q '^iPhoneOS26'; then
+              echo "skip: $x (no iOS 26 SDK)"; continue
+            fi
+            if [ ! -d "$DEV/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk" ]; then
+              echo "skip: $x (no macOS SDK)"; continue
+            fi
+            sudo xcode-select -s "$x"
+            if ! sudo xcodebuild -runFirstLaunch >/dev/null 2>&1; then
+              echo "skip: $x (runFirstLaunch failed)"; continue
+            fi
+            # mdimport は Xcode 外のシステムツールで、xcrun の解決が
+            # xcodebuild -find フォールバックに落ちる。26.6.0 はこの
+            # フォールバック自体が壊れているため、これで検出して弾く
+            OK=1
+            for t in actool ibtool clang clang++ ld strip dsymutil libtool lipo mdimport; do
+              if ! xcrun --find "$t" >/dev/null 2>&1; then
+                echo "skip: $x (xcrun cannot find $t)"; OK=0; break
+              fi
+            done
+            [ "$OK" = "1" ] || continue
+            SELECTED="$x"; break
+          done
+          if [ -z "$SELECTED" ]; then
+            echo "::error::no usable Xcode with iOS 26 SDK found"
+            for x in /Applications/Xcode_*.app; do echo "== $x"; ls "$x/Contents/Developer/Platforms" 2>/dev/null || true; done
+            exit 1
+          fi
+          echo "selected: $SELECTED"
+          # xcrun の解決を選択した Xcode に固定 (以降の全ステップに適用)
+          echo "DEVELOPER_DIR=$SELECTED/Contents/Developer" >> "$GITHUB_ENV"
+          xcodebuild -version
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install MAUI workloads
+        run: dotnet workload restore software/maui/E-Sensor/E-Sensor.csproj
+
+      - name: Import signing certificate
+        env:
+          P12_BASE64: ${{ secrets.APPLE_CERT_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
+        run: |
+          echo "$P12_BASE64" | base64 --decode > cert.p12
+          # CI 専用の一時キーチェーンを作成して証明書を読み込む
+          security create-keychain -p ci-build-pass build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p ci-build-pass build.keychain
+          security set-keychain-settings -lut 21600 build.keychain
+          security import cert.p12 -k build.keychain -P "$P12_PASSWORD" -T /usr/bin/codesign
+          # codesign が UI プロンプトなしで鍵を使えるようにする
+          security set-key-partition-list -S apple-tool:,apple: -s -k ci-build-pass build.keychain
+          rm cert.p12
+          security find-identity -v -p codesigning build.keychain
+
+      - name: Install provisioning profile
+        env:
+          PROVISION_BASE64: ${{ secrets.APPLE_PROVISION_BASE64 }}
+        run: |
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          echo "$PROVISION_BASE64" | base64 --decode \
+            > "$HOME/Library/MobileDevice/Provisioning Profiles/esensor_dist_ci.mobileprovision"
+
+      - name: Build ipa
+        run: >
+          dotnet publish software/maui/E-Sensor/E-Sensor.csproj
+          -f net10.0-ios -c Release
+          -p:RuntimeIdentifier=ios-arm64
+          -p:ArchiveOnBuild=true
+          -p:CodesignProvision=esensor_dist_ci
+          -p:CodesignKey="Apple Distribution: Eisuke Togashi (CREDLZ9YUL)"
+
+      # ランナー同梱の fastlane (Homebrew Ruby) は OpenSSL の問題で API キー (EC 鍵) を
+      # 読めず 'invalid curve name' で失敗するため、setup-ruby の環境に fastlane を
+      # 入れて使う
+      - name: Setup Ruby for fastlane
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Upload to TestFlight
+        env:
+          API_KEY: ${{ secrets.APPSTORE_API_KEY_P8 }}
+          API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+        run: |
+          # Secret の .p8 が秘密鍵として読めるか先に確認 (貼り付けで改行が失われる事故の切り分け)
+          if ! printf '%s\n' "$API_KEY" | openssl pkey -noout 2>/dev/null; then
+            echo "::error::APPSTORE_API_KEY_P8 secret cannot be parsed as a private key (check that newlines were preserved when pasting)"
+            exit 1
+          fi
+          gem install fastlane --no-document
+          IPA=$(find software/maui/E-Sensor/bin/Release/net10.0-ios -name '*.ipa' | head -n 1)
+          echo "uploading: $IPA"
+          python3 - <<'EOF'
+          import json, os
+          json.dump({
+              "key_id": os.environ["API_KEY_ID"],
+              "issuer_id": os.environ["API_ISSUER_ID"],
+              "key": os.environ["API_KEY"],
+              "in_house": False,
+          }, open("api_key.json", "w"))
+          EOF
+          fastlane pilot upload --ipa "$IPA" --api_key_path api_key.json --skip_waiting_for_build_processing
+          rm api_key.json
+
+      # アップロード失敗時の切り分け用に ipa を成果物としても残す (14 日で消える)
+      - name: Upload ipa artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ipa
+          path: software/maui/E-Sensor/bin/Release/net10.0-ios/**/*.ipa
+          retention-days: 14
+          if-no-files-found: ignore
