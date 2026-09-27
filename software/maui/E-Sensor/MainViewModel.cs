@@ -174,6 +174,7 @@ public partial class MainViewModel : ObservableObject
   [NotifyCanExecuteChangedFor(nameof(ExportDataCommand))]
   [NotifyCanExecuteChangedFor(nameof(ToggleRecordCommand))]
   [NotifyCanExecuteChangedFor(nameof(OpenMaintenanceMenuCommand))]
+  [NotifyCanExecuteChangedFor(nameof(StartAverageCommand))]
   [NotifyPropertyChangedFor(nameof(IsDeviceLive))]
   private bool _isDeviceConnected;
 
@@ -187,6 +188,7 @@ public partial class MainViewModel : ObservableObject
   [NotifyCanExecuteChangedFor(nameof(StartRecordCommand))]
   [NotifyCanExecuteChangedFor(nameof(ToggleRecordCommand))]
   [NotifyCanExecuteChangedFor(nameof(OpenMaintenanceMenuCommand))]
+  [NotifyCanExecuteChangedFor(nameof(StartAverageCommand))]
   [NotifyPropertyChangedFor(nameof(IsDeviceLive))]
   private bool _isDataFresh = false;
 
@@ -215,6 +217,7 @@ public partial class MainViewModel : ObservableObject
   [ObservableProperty]
   [NotifyPropertyChangedFor(nameof(TempHumInfoBadgeText))]
   [NotifyPropertyChangedFor(nameof(VelocityBadgeText))]
+  [NotifyCanExecuteChangedFor(nameof(StartAverageCommand))]
   private bool _isVelocityOn = true;
 
   /// <summary>風速計 On/Off トグルが利用可能か（ファーム v1.1.0 以降）</summary>
@@ -543,6 +546,7 @@ public partial class MainViewModel : ObservableObject
     _clothing = Preferences.Get(PREF_CLO, DEFAULT_CLO);
     _metabolicRate = Preferences.Get(PREF_MET, DEFAULT_MET);
     UpdatePmvSettingBadge();
+    UpdateAvgText();
 
     // 起動時の初期状態を反映
     initializeAsync();
@@ -696,6 +700,7 @@ public partial class MainViewModel : ObservableObject
 
       // 風速
       ApplyVelocityDisplay();
+      AccumulateAverage();
 
       // 照度
       if (IsIlluminanceValid)
@@ -837,6 +842,8 @@ public partial class MainViewModel : ObservableObject
       // OFF: 予熱表示は不要なので解除
       _velocityWarmupTimer?.Stop();
       IsVelocityWarmup = false;
+      // 風速を測れなくなるので、平均中ならその時点までで確定する
+      FinalizeAverage();
     }
     // 補正値↔生値・風速表示を即座に切り替える
     Application.Current?.Dispatcher.Dispatch(() =>
@@ -1079,6 +1086,7 @@ public partial class MainViewModel : ObservableObject
         FirmwareVersion = "---";
         // 切断時はバッジ状態もリセット（再接続時に古い CONDITIONING が残らないように）
         EndConditioning();
+        FinalizeAverage();
       }
     });
   }
@@ -1087,11 +1095,8 @@ public partial class MainViewModel : ObservableObject
   /// <param name="value"></param>
   partial void OnIsRecordingChanged(bool value)
   {
-    // スリープ防止の切り替え
-    MainThread.BeginInvokeOnMainThread(() =>
-    {
-      DeviceDisplay.Current.KeepScreenOn = value;
-    });
+    // スリープ防止の切り替え（平均中も画面を消さない）
+    UpdateKeepScreenOn();
 
 
     // 記録タスクの制御
@@ -1206,6 +1211,148 @@ public partial class MainViewModel : ObservableObject
 
   #endregion
 
+  #region 風速の平均化
+
+  /// <summary>平均化の状態</summary>
+  public enum AverageState
+  {
+    /// <summary>平均なし（瞬時値のみ表示）</summary>
+    Idle,
+    /// <summary>平均中（受信のたびに積算）</summary>
+    Running,
+    /// <summary>確定（平均値を固定表示）</summary>
+    Held,
+  }
+
+  /// <summary>風速の保証レンジ上限[m/s]。超過値は上限値として平均に含め、注記を付ける</summary>
+  private const double VELOCITY_RANGE_MAX = 5.0;
+
+  /// <summary>この秒数を超えて受信が途切れた区間は平均に含めない（欠測扱い）</summary>
+  private const double AVG_MAX_GAP_SECONDS = 1.0;
+
+  [ObservableProperty]
+  [NotifyPropertyChangedFor(nameof(IsAvgRunning))]
+  [NotifyPropertyChangedFor(nameof(IsAvgNotRunning))]
+  [NotifyPropertyChangedFor(nameof(IsAvgHeld))]
+  private AverageState _avgState = AverageState.Idle;
+
+  public bool IsAvgRunning => AvgState == AverageState.Running;
+  public bool IsAvgNotRunning => AvgState != AverageState.Running;
+  public bool IsAvgHeld => AvgState == AverageState.Held;
+
+  /// <summary>風速カード下部の平均表示（例 "平均 1.27 m/s　0:42　計測中"）</summary>
+  [ObservableProperty]
+  private string _avgText = string.Empty;
+
+  // 時間平均の積算値。ポーリング間隔の揺らぎに左右されないよう、値×経過時間で積算する
+  // （次の受信までは直前の値が続いていたとみなす）。
+  private double _avgSum;          // Σ v·dt [m]
+  private double _avgTime;         // Σ dt [s]（有効な受信が続いていた時間）
+  private DateTime? _avgLastTime;  // 直前の有効な受信時刻（欠測で null に戻して区間を切る）
+  private double _avgLastValue;
+  private bool _avgOverRange;
+
+  private bool CanStartAverage() => IsDeviceLive && IsVelocityOn;
+
+  /// <summary>平均を開始する（確定中からは、それまでの平均を捨てて新しく開始する）</summary>
+  [RelayCommand(CanExecute = nameof(CanStartAverage))]
+  private void StartAverage()
+  {
+    ResetAverage();
+    AvgState = AverageState.Running;
+    UpdateAvgText();
+    UpdateKeepScreenOn();
+  }
+
+  /// <summary>平均を停止して確定値として固定表示する</summary>
+  [RelayCommand]
+  private void StopAverage() => FinalizeAverage();
+
+  /// <summary>
+  /// 平均中なら確定する。停止ボタンのほか、アプリのバックグラウンド移行（Web へ入力しに行く）、
+  /// 風速計 OFF、切断、データ途絶のときにも呼ぶ。平均中でなければ何もしない。
+  /// </summary>
+  public void FinalizeAverage()
+  {
+    if (AvgState != AverageState.Running) return;
+    AvgState = AverageState.Held;
+    UpdateAvgText();
+    UpdateKeepScreenOn();
+  }
+
+  private void ResetAverage()
+  {
+    _avgSum = 0;
+    _avgTime = 0;
+    _avgLastTime = null;
+    _avgLastValue = 0;
+    _avgOverRange = false;
+  }
+
+  /// <summary>受信のたびに呼び、平均中なら有効な風速を時間で重み付けして積算する</summary>
+  private void AccumulateAverage()
+  {
+    if (AvgState != AverageState.Running) return;
+    var e = _latestEntry;
+    bool valid = e != null && IsVelocityOn && !IsVelocityWarmup && IsVelocityValid;
+    if (!valid)
+    {
+      // OFF・予熱中・無効データの間は積算しない（区間を切る）
+      _avgLastTime = null;
+      UpdateAvgText();
+      return;
+    }
+
+    double v = e!.Vel;
+    if (v > VELOCITY_RANGE_MAX)
+    {
+      v = VELOCITY_RANGE_MAX;
+      _avgOverRange = true;
+    }
+
+    var now = DateTime.Now;
+    if (_avgLastTime.HasValue)
+    {
+      double dt = (now - _avgLastTime.Value).TotalSeconds;
+      if (dt > 0 && dt <= AVG_MAX_GAP_SECONDS)
+      {
+        _avgSum += _avgLastValue * dt;
+        _avgTime += dt;
+      }
+    }
+    _avgLastTime = now;
+    _avgLastValue = v;
+    UpdateAvgText();
+  }
+
+  private void UpdateAvgText()
+  {
+    var label = Resources.Strings.AvgLabel;
+    if (AvgState == AverageState.Idle)
+    {
+      AvgText = $"{label}  ―";
+      return;
+    }
+    string mean = _avgTime > 0 ? (_avgSum / _avgTime).ToString("F2") : "---";
+    var ts = TimeSpan.FromSeconds(_avgTime);
+    string elapsed = $"{(int)ts.TotalMinutes}:{ts.Seconds:00}";
+    string state = AvgState == AverageState.Running ? Resources.Strings.AvgRunning : Resources.Strings.AvgHeld;
+    string over = _avgOverRange ? $" {Resources.Strings.AvgOverRange}" : string.Empty;
+    AvgText = $"{label} {mean} m/s　{elapsed}　{state}{over}";
+  }
+
+  /// <summary>記録中または平均中は画面を消灯させない</summary>
+  private void UpdateKeepScreenOn()
+  {
+    bool keep = IsRecording || AvgState == AverageState.Running;
+    MainThread.BeginInvokeOnMainThread(() =>
+    {
+      DeviceDisplay.Current.KeepScreenOn = keep;
+    });
+  }
+
+  #endregion
+
   #region イースターエッグ関連
 
   /// <summary>犬が見えているか否か</summary>
@@ -1242,6 +1389,8 @@ public partial class MainViewModel : ObservableObject
       // ケーブルが抜かれた場合、復帰後も古い _latestEntry がコピーされ
       // 続けるのを防ぐため。
       if (IsRecording) StopRecord();
+      // 平均も同様に、途絶した時点までで確定する
+      FinalizeAverage();
     }
   }
 
@@ -1253,8 +1402,9 @@ public partial class MainViewModel : ObservableObject
 
   private void startDummyDataLoop()
   {
-    // 既に接続されているように見せる
-    IsDeviceConnected = true;
+    // 既に接続されているように見せる。initializeAsync が直前に積んだ「未接続」の反映（Dispatch）に
+    // 上書きされないよう、こちらも Dispatch で後ろに積む
+    Application.Current?.Dispatcher.Dispatch(() => IsDeviceConnected = true);
 
     _dummyDataTimer = Application.Current?.Dispatcher.CreateTimer();
     if (_dummyDataTimer != null)

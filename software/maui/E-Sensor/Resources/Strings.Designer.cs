@@ -378,6 +378,42 @@ namespace E_Sensor.Resources {
             }
         }
 
+        public static string AvgLabel {
+            get {
+                return ResourceManager.GetString("AvgLabel", resourceCulture);
+            }
+        }
+
+        public static string AvgRunning {
+            get {
+                return ResourceManager.GetString("AvgRunning", resourceCulture);
+            }
+        }
+
+        public static string AvgHeld {
+            get {
+                return ResourceManager.GetString("AvgHeld", resourceCulture);
+            }
+        }
+
+        public static string AvgOverRange {
+            get {
+                return ResourceManager.GetString("AvgOverRange", resourceCulture);
+            }
+        }
+
+        public static string AvgStart {
+            get {
+                return ResourceManager.GetString("AvgStart", resourceCulture);
+            }
+        }
+
+        public static string AvgStop {
+            get {
+                return ResourceManager.GetString("AvgStop", resourceCulture);
+            }
+        }
+
         public static string PmvSettingsTitle {
             get {
                 return ResourceManager.GetString("PmvSettingsTitle", resourceCulture);

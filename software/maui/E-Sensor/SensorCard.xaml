@@ -84,6 +84,11 @@
                    FontSize="12"
                    TextColor="Gray"
                    HorizontalOptions="End" />
+
+            <!-- 追加部品の差し込み枠（ExtraContent）。部品の BindingContext はページの ViewModel を引き継ぐ。 -->
+            <ContentView x:Name="ExtraHost"
+                         Content="{Binding ExtraContent, Source={x:Reference this}}"
+                         IsVisible="False" />
         </VerticalStackLayout>
     </Border>
 </ContentView>

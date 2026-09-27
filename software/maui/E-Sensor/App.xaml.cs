@@ -17,6 +17,14 @@ namespace E_Sensor
     {
       var window = new Window(_mainPage);
 
+      // バックグラウンドへ移ったら（Web の入力ページへ切り替えたとき等）、平均中なら確定する。
+      // 切り替えた時点で測定は終わったとみなし、値を固定しておく。
+      window.Stopped += (_, _) =>
+      {
+        if (_mainPage.BindingContext is MainViewModel vm)
+          MainThread.BeginInvokeOnMainThread(vm.FinalizeAverage);
+      };
+
       // --- ウィンドウサイズの規定 ---
       window.Width = 1200;      // 幅
       window.Height = 400;     // 高さ

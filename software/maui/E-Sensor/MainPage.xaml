@@ -53,6 +53,42 @@
                 </VisualStateGroupList>
             </Setter>
         </Style>
+        <!-- 風速カードの平均化ボタン。高さを揃えて、状態が変わってもカードの高さが変わらないようにする -->
+        <Style x:Key="AvgPrimaryButtonStyle" TargetType="Button">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="HeightRequest" Value="36" />
+            <Setter Property="MinimumHeightRequest" Value="36" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="VisualStateManager.VisualStateGroups">
+                <VisualStateGroupList>
+                    <VisualStateGroup x:Name="CommonStates">
+                        <VisualState x:Name="Normal">
+                            <VisualState.Setters>
+                                <Setter Property="BackgroundColor" Value="#0078D4" />
+                                <Setter Property="TextColor" Value="White" />
+                            </VisualState.Setters>
+                        </VisualState>
+                        <VisualState x:Name="Disabled">
+                            <VisualState.Setters>
+                                <Setter Property="BackgroundColor" Value="#E1E6EC" />
+                                <Setter Property="TextColor" Value="#9AA4AF" />
+                            </VisualState.Setters>
+                        </VisualState>
+                    </VisualStateGroup>
+                </VisualStateGroupList>
+            </Setter>
+        </Style>
+
+        <Style x:Key="AvgStopButtonStyle" TargetType="Button">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="HeightRequest" Value="36" />
+            <Setter Property="MinimumHeightRequest" Value="36" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="BackgroundColor" Value="#D83B01" />
+            <Setter Property="TextColor" Value="White" />
+        </Style>
     </ContentPage.Resources>
 
     <!-- SafeAreaEdges: 全体はエッジツーエッジ(None)を維持し、暗色パネルの背景を画面端まで
@@ -223,7 +259,41 @@
                                        ValueFontSize="60"
                                        CardWidthRequest="-1"
                                        CardHeightRequest="-1"
-                                       CardPadding="20" />
+                                       CardPadding="20">
+                    <viewmodels:SensorCard.ExtraContent>
+                        <!-- 平均化。瞬時値（上の大きな数字）の位置と大きさは状態によらず変えず、平均は補足として
+                             ここに表示する（大きさを入れ替えると瞬時値と平均値を取り違えるおそれがあるため）。
+                             ボタンは 1 つだけ：[平均開始] → 平均中 [停止] → 確定（次の平均開始まで表示し続ける） -->
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,10,0,0">
+                            <Label Grid.Column="0"
+                                   Text="{Binding AvgText}"
+                                   FontSize="15"
+                                   FontAttributes="Bold"
+                                   TextColor="#8A94A0"
+                                   LineBreakMode="WordWrap"
+                                   VerticalOptions="Center">
+                                <Label.Triggers>
+                                    <DataTrigger TargetType="Label" Binding="{Binding IsAvgRunning}" Value="True">
+                                        <Setter Property="TextColor" Value="#0078D4" />
+                                    </DataTrigger>
+                                    <DataTrigger TargetType="Label" Binding="{Binding IsAvgHeld}" Value="True">
+                                        <Setter Property="TextColor" Value="#067647" />
+                                    </DataTrigger>
+                                </Label.Triggers>
+                            </Label>
+                            <HorizontalStackLayout Grid.Column="1" Spacing="6" VerticalOptions="Center">
+                                <Button Text="{x:Static res:Strings.AvgStart}"
+                                        Command="{Binding StartAverageCommand}"
+                                        IsVisible="{Binding IsAvgNotRunning}"
+                                        Style="{StaticResource AvgPrimaryButtonStyle}" />
+                                <Button Text="{x:Static res:Strings.AvgStop}"
+                                        Command="{Binding StopAverageCommand}"
+                                        IsVisible="{Binding IsAvgRunning}"
+                                        Style="{StaticResource AvgStopButtonStyle}" />
+                            </HorizontalStackLayout>
+                        </Grid>
+                    </viewmodels:SensorCard.ExtraContent>
+                </viewmodels:SensorCard>
 
                 <!-- 脇役：付随センサ。各セルいっぱいに広げ(CardWidthRequest=-1)、高さは内容ぴったり
                      (CardHeightRequest=-1)＋内側余白を詰めて(CardPadding=10)、6 項目をできるだけ

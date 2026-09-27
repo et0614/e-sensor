@@ -225,6 +225,24 @@
   <data name="PpdTitle" xml:space="preserve">
     <value>PPD</value>
   </data>
+  <data name="AvgLabel" xml:space="preserve">
+    <value>平均</value>
+  </data>
+  <data name="AvgRunning" xml:space="preserve">
+    <value>計測中</value>
+  </data>
+  <data name="AvgHeld" xml:space="preserve">
+    <value>確定</value>
+  </data>
+  <data name="AvgOverRange" xml:space="preserve">
+    <value>（5.0超を含む）</value>
+  </data>
+  <data name="AvgStart" xml:space="preserve">
+    <value>平均開始</value>
+  </data>
+  <data name="AvgStop" xml:space="preserve">
+    <value>停止</value>
+  </data>
   <data name="PmvSettingsTitle" xml:space="preserve">
     <value>PMV 設定</value>
   </data>

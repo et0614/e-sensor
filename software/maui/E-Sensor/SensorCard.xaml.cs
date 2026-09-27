@@ -55,6 +55,11 @@ public partial class SensorCard : ContentView
   public static readonly BindableProperty CardPaddingProperty =
       BindableProperty.Create(nameof(CardPadding), typeof(Thickness), typeof(SensorCard), new Thickness(16));
 
+  // カード下部に差し込む追加の部品（風速カードの平均化表示・操作に使う）。null のとき何も表示しない。
+  public static readonly BindableProperty ExtraContentProperty =
+      BindableProperty.Create(nameof(ExtraContent), typeof(View), typeof(SensorCard), null,
+          propertyChanged: OnExtraContentChanged);
+
   public string Title
   {
     get => (string)GetValue(TitleProperty);
@@ -121,6 +126,12 @@ public partial class SensorCard : ContentView
     set => SetValue(CardPaddingProperty, value);
   }
 
+  public View? ExtraContent
+  {
+    get => (View?)GetValue(ExtraContentProperty);
+    set => SetValue(ExtraContentProperty, value);
+  }
+
   public SensorCard()
   {
     InitializeComponent();
@@ -128,6 +139,7 @@ public partial class SensorCard : ContentView
     UpdateBadgeVisuals(BadgeText);
     InfoBadgeBorder.IsVisible = !string.IsNullOrEmpty(InfoBadgeText);
     SettingsIcon.IsVisible = SettingsCommand != null;
+    ExtraHost.IsVisible = ExtraContent != null;
   }
 
   private void UpdateBadgeVisuals(string? badgeText)
@@ -159,6 +171,15 @@ public partial class SensorCard : ContentView
     if (bindable is SensorCard card)
     {
       card.SettingsIcon.IsVisible = newValue != null;
+    }
+  }
+
+  // 追加部品が無いカードでは枠ごと非表示にし、余分な行間を作らない
+  private static void OnExtraContentChanged(BindableObject bindable, object oldValue, object newValue)
+  {
+    if (bindable is SensorCard card)
+    {
+      card.ExtraHost.IsVisible = newValue != null;
     }
   }
 }
