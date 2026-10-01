@@ -1,0 +1,124 @@
+# Windows 版アプリをビルドして GitHub Releases に登録する
+#
+# 起動方法（どちらでも可）:
+#   1) バージョンのタグを push する
+#        git tag v1.1.4
+#        git push origin v1.1.4
+#      タグはアプリのバージョン（E-Sensor.csproj の ApplicationDisplayVersion）と
+#      一致している必要がある（不一致なら取り違え防止のため登録せずに失敗させる）。
+#   2) Actions タブ → windows-release → Run workflow
+#      csproj のバージョンから v1.1.4 のようなタグを作り、実行したコミットに付けて登録する。
+#
+# 成果物: .NET と Windows App SDK を同梱した自己完結型の zip（インストール不要）。
+# 展開して E-Sensor.exe を実行する。同じタグのリリースが既にあれば zip だけ差し替える。
+
+name: windows-release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write   # リリースとタグの作成に必要
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      PROJECT: software/maui/E-Sensor/E-Sensor.csproj
+      TFM: net10.0-windows10.0.19041.0
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine version and tag
+        id: ver
+        run: |
+          $m = Select-String -Path $env:PROJECT -Pattern '<ApplicationDisplayVersion>\s*([^<\s]+)\s*<'
+          if (-not $m) { throw 'ApplicationDisplayVersion が csproj に見つかりません' }
+          $ver = $m.Matches[0].Groups[1].Value
+          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            $tag = $env:GITHUB_REF_NAME
+            if ($tag -ne "v$ver") {
+              Write-Output "::error::タグ $tag とアプリのバージョン v$ver が一致しません。csproj のバージョンを確認してください"
+              exit 1
+            }
+          } else {
+            $tag = "v$ver"
+          }
+          "version=$ver" >> $env:GITHUB_OUTPUT
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+          "zip=E-Sensor-Windows-x64-$tag.zip" >> $env:GITHUB_OUTPUT
+          Write-Output "version: $ver / tag: $tag"
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install MAUI Windows workload
+        run: dotnet workload install maui-windows
+
+      # TargetFrameworks を Windows だけに絞り、Android/iOS のワークロードを不要にする。
+      # SelfContained / WindowsAppSDKSelfContained で、配布先に .NET や Windows App SDK が無くても動くようにする。
+      - name: Publish
+        run: >
+          dotnet publish $env:PROJECT
+          -f $env:TFM -c Release -r win-x64
+          -p:TargetFrameworks=$env:TFM
+          -p:SelfContained=true
+          -p:WindowsAppSDKSelfContained=true
+          -p:WindowsPackageType=None
+          "-p:SatelliteResourceLanguages=en%3Bja"
+          -o publish
+
+      - name: Zip
+        run: |
+          if (-not (Test-Path publish/E-Sensor.exe)) { throw 'publish/E-Sensor.exe が生成されていません' }
+          Compress-Archive -Path publish/* -DestinationPath '${{ steps.ver.outputs.zip }}' -CompressionLevel Optimal
+          Get-Item '${{ steps.ver.outputs.zip }}' | Select-Object Name, Length
+
+      - name: Create or update GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.ver.outputs.tag }}
+          VER: ${{ steps.ver.outputs.version }}
+          ZIP: ${{ steps.ver.outputs.zip }}
+        run: |
+          $notes = @"
+          ## E-Sensor Windows 版 $env:VER
+
+          1. ``$env:ZIP`` をダウンロードし、任意のフォルダに展開する
+          2. ``E-Sensor.exe`` を実行する（.NET などの追加インストールは不要）
+          3. E-Sensor を USB で PC に接続する
+
+          コード署名をしていないため、初回起動時に Windows の SmartScreen の警告が出ることがあります。
+          「詳細情報」→「実行」で起動できます。
+
+          iOS / Android 版は App Store / Google Play から入手してください。
+
+          ---
+
+          ## E-Sensor for Windows $env:VER
+
+          1. Download ``$env:ZIP`` and extract it to any folder
+          2. Run ``E-Sensor.exe`` (no additional installation such as .NET is required)
+          3. Connect the E-Sensor to the PC via USB
+
+          The app is not code-signed, so Windows SmartScreen may show a warning on first launch.
+          Click "More info" then "Run anyway" to start it.
+
+          The iOS / Android versions are available on the App Store / Google Play.
+          "@
+          gh release view $env:TAG *> $null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Output "release $env:TAG exists: replacing the Windows zip"
+            gh release upload $env:TAG $env:ZIP --clobber
+          } else {
+            gh release create $env:TAG $env:ZIP --title "E-Sensor $env:TAG" --notes $notes --target $env:GITHUB_SHA
+          }
