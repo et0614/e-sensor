@@ -84,6 +84,9 @@
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
 		<PackageReference Include="Popolo.Core" Version="3.1.1" />
 		<PackageReference Include="SkiaSharp.Extended.UI.Maui" Version="3.0.0" />
+		<!-- SkiaSharp.Extended.UI.Maui 3.0.0 は .NET 9 用の Compatibility 9.0.82 を引き込み、新しい MAUI ワークロードの
+		     Windows ビルドで存在しないファイルのコピーに失敗する（MSB3030）。MAUI 本体と同じ版を明示して揃える。 -->
+		<PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="$(MauiVersion)" />
 	</ItemGroup>
 
 	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
