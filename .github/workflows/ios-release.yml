@@ -116,10 +116,13 @@ jobs:
           echo "$PROVISION_BASE64" | base64 --decode \
             > "$HOME/Library/MobileDevice/Provisioning Profiles/esensor_dist_ci.mobileprovision"
 
+      # TargetFrameworks を iOS だけに絞る（プロジェクトは Android も対象にしており、絞らないと
+      # 復元時に Android のワークロードも要求される。上では iOS のワークロードしか入れていない）
       - name: Build ipa
         run: >
           dotnet publish software/maui/E-Sensor/E-Sensor.csproj
           -f net10.0-ios -c Release
+          -p:TargetFrameworks=net10.0-ios
           -p:RuntimeIdentifier=ios-arm64
           -p:ArchiveOnBuild=true
           -p:CodesignProvision=esensor_dist_ci
