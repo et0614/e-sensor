@@ -78,13 +78,18 @@ jobs:
           echo "DEVELOPER_DIR=$SELECTED/Contents/Developer" >> "$GITHUB_ENV"
           xcodebuild -version
 
+      # SDK とワークロードセットの版を固定する。2026-09-28 公開のワークロードセット 10.0.401.1 以降は
+      # .NET for iOS 27.0（Xcode 27 / iOS 27 SDK が必要）を含み、Xcode 26.x までしか無いランナーでは
+      # 「iOS 27.0 で追加された型が iOS 26.5 に無い」としてビルドに失敗する。10.0.401 は
+      # .NET for iOS 26.5.10318 / MAUI 10.0.20 の組み合わせ（手元の開発環境と同じ）。
+      # ランナーに Xcode 27 が入ったら、SDK とワークロードセットの版を上げてこの固定を見直すこと。
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
+          dotnet-version: '10.0.401'
 
       - name: Install MAUI workloads
-        run: dotnet workload restore software/maui/E-Sensor/E-Sensor.csproj
+        run: dotnet workload install maui-ios ios --version 10.0.401
 
       - name: Import signing certificate
         env:
