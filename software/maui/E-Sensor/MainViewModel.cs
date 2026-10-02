@@ -8,7 +8,9 @@ namespace E_Sensor;
 // v1.1.2 未満（体験版・熱影響補正あり）では補正後の温湿度、v1.1.2 以降（正規版・
 // 基板改良で熱影響なし）では生値がそのまま入る。CSV には生値と補正値を併記せず、
 // この表示値の 1 系統のみを書き出す（ユーザの混乱を避けるため）。
-public record SensorLogEntry(DateTime Timestamp, double Temp, double Hum, double Vel, double Volt, double Ill, int Co2, bool IsTempValid, bool IsVelValid, bool IsIllValid);
+// CO2 は例外で、センサの生値（Co2）と画面に表示している 5 秒平均（Co2Avg）の両方を記録する。
+// Co2Avg は平均が無い期間（起動直後・初期調整後の 390 ppm 固定期間など）は NaN。
+public record SensorLogEntry(DateTime Timestamp, double Temp, double Hum, double Vel, double Volt, double Ill, int Co2, bool IsTempValid, bool IsVelValid, bool IsIllValid, double Co2Avg = double.NaN);
 
 public partial class MainViewModel : ObservableObject
 {
@@ -491,12 +493,14 @@ public partial class MainViewModel : ObservableObject
     {
       // CSVデータの生成
       var sb = new System.Text.StringBuilder();
-      sb.AppendLine("Date,Time,Temperature[C],Humidity[%],Velocity[m/s],Illuminance[Lux],CO2[ppm],Velocity Voltage[V],Temperature Valid,Velocity Valid,Illuminance Valid");
+      // CO2[ppm] はセンサの生値、末尾の CO2 5s Average[ppm] は画面に表示している 5 秒平均（無い期間は空欄）。
+      // 既存の列の順番は変えず、平均は末尾に追加する（列位置で読む既存の処理を壊さないため）。
+      sb.AppendLine("Date,Time,Temperature[C],Humidity[%],Velocity[m/s],Illuminance[Lux],CO2[ppm],Velocity Voltage[V],Temperature Valid,Velocity Valid,Illuminance Valid,CO2 5s Average[ppm]");
       foreach (var row in _recordedData)
       {
         // InvariantCultureを指定することで、OSの言語設定に関わらず小数点を「.」に固定(温湿度と照度は表示値よりも1桁精度高)
         var line = string.Format(System.Globalization.CultureInfo.InvariantCulture,
-            "{0:yyyy-MM-dd,HH:mm:ss},{1:F2},{2:F2},{3:F3},{4:F1},{5},{6:F3},{7},{8},{9}",
+            "{0:yyyy-MM-dd,HH:mm:ss},{1:F2},{2:F2},{3:F3},{4:F1},{5},{6:F3},{7},{8},{9},{10}",
             row.Timestamp,
             row.Temp,
             row.Hum,
@@ -506,7 +510,8 @@ public partial class MainViewModel : ObservableObject
             row.Volt,
             row.IsTempValid,
             row.IsVelValid,
-            row.IsIllValid
+            row.IsIllValid,
+            double.IsNaN(row.Co2Avg) ? "" : row.Co2Avg.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)
             );
         sb.AppendLine(line);
       }
@@ -696,6 +701,7 @@ public partial class MainViewModel : ObservableObject
 
       // 熱影響補正(温度の更新周期=約1Hz で実行)してから表示に反映する
       UpdateThermalCorrection();
+      UpdateCo2Average();
       ApplyTempHumDisplay();
 
       // 風速
@@ -780,6 +786,42 @@ public partial class MainViewModel : ObservableObject
   /// 温度・湿度・CO2 の表示文字列を反映する。風速計 ON のときは補正値、OFF のときは
   /// 生値を表示する。トグル切替時にも即座に反映できるよう独立メソッドにしている。
   /// </summary>
+  /// <summary>CO2 表示の移動平均の時間幅[sec]</summary>
+  private const double CO2_AVG_SECONDS = 5.0;
+
+  /// <summary>CO2 の移動平均用の受信履歴（受信時刻と生値）</summary>
+  private readonly Queue<(DateTime Time, int Value)> _co2Window = new();
+
+  /// <summary>
+  /// 直近 5 秒の CO2 平均[ppm]。平均が無いときは NaN。記録ループ（別スレッド）からも読むので、
+  /// 読み書きが分割されない double 1 個で保持する。
+  /// </summary>
+  private double _co2Avg = double.NaN;
+
+  /// <summary>
+  /// 受信のたびに CO2 の生値を履歴に加え、直近 5 秒の平均を求める。STCC4 の値は 1 秒ごとにしか
+  /// 更新されず、その間は同じ値を約 200 ms ごとに受信するので、受信した値の単純平均がそのまま
+  /// 各 1 秒値の時間平均になる。390 ppm 固定の WARM-UP・初期調整中は履歴を捨てて平均を取らない
+  /// （明けた直後の平均に 390 ppm が混ざらないように）。
+  /// </summary>
+  private void UpdateCo2Average()
+  {
+    var e = _latestEntry;
+    if (IsCo2Warmup || IsConditioning)
+    {
+      _co2Window.Clear();
+      _co2Avg = double.NaN;
+      return;
+    }
+    if (e == null || !IsTemperatureValid) return;
+
+    var now = DateTime.Now;
+    _co2Window.Enqueue((now, e.Co2));
+    while (_co2Window.Count > 0 && (now - _co2Window.Peek().Time).TotalSeconds > CO2_AVG_SECONDS)
+      _co2Window.Dequeue();
+    _co2Avg = _co2Window.Average(x => x.Value);
+  }
+
   private void ApplyTempHumDisplay()
   {
     var e = _latestEntry;
@@ -788,7 +830,10 @@ public partial class MainViewModel : ObservableObject
     {
       Temperature = DisplayTemp.ToString("F1");
       Humidity = DisplayHum.ToString("F1");
-      Co2Level = e.Co2.ToString();
+      // CO2 は 1 秒ごとの生値だと揺れが大きいので、直近 5 秒の平均を表示する。
+      // 390 ppm 固定の WARM-UP・初期調整中は平均を取らないので生値（WARM-UP バッジで灰色表示）。
+      double avg = _co2Avg;
+      Co2Level = double.IsNaN(avg) ? e.Co2.ToString() : avg.ToString("F0");
       _hasValidDataReceived = true;
     }
     else if (!_hasValidDataReceived)
@@ -1186,7 +1231,8 @@ public partial class MainViewModel : ObservableObject
           {
             Timestamp = DateTime.Now,
             Temp = DisplayTemp,
-            Hum = DisplayHum
+            Hum = DisplayHum,
+            Co2Avg = _co2Avg
           };
           _recordedData.Add(entryToRecord);
 
@@ -1240,9 +1286,13 @@ public partial class MainViewModel : ObservableObject
   public bool IsAvgNotRunning => AvgState != AverageState.Running;
   public bool IsAvgHeld => AvgState == AverageState.Held;
 
-  /// <summary>風速カード下部の平均表示（例 "平均 1.27 m/s　0:42　計測中"）</summary>
+  /// <summary>風速カード下部の平均表示（例 "平均 1.27 m/s　0:42　集計中"）</summary>
   [ObservableProperty]
   private string _avgText = string.Empty;
+
+  /// <summary>平均の下に添える最小・最大（例 "最小 0.62　最大 2.10"）。平均と同じ期間の有効な読み取り値から求める</summary>
+  [ObservableProperty]
+  private string _avgRangeText = string.Empty;
 
   // 時間平均の積算値。ポーリング間隔の揺らぎに左右されないよう、値×経過時間で積算する
   // （次の受信までは直前の値が続いていたとみなす）。
@@ -1251,6 +1301,9 @@ public partial class MainViewModel : ObservableObject
   private DateTime? _avgLastTime;  // 直前の有効な受信時刻（欠測で null に戻して区間を切る）
   private double _avgLastValue;
   private bool _avgOverRange;
+  private bool _avgHasSample;      // 有効な読み取り値が 1 つ以上あったか（最小・最大の表示用）
+  private double _avgMin;
+  private double _avgMax;
 
   private bool CanStartAverage() => IsDeviceLive && IsVelocityOn;
 
@@ -1287,6 +1340,9 @@ public partial class MainViewModel : ObservableObject
     _avgLastTime = null;
     _avgLastValue = 0;
     _avgOverRange = false;
+    _avgHasSample = false;
+    _avgMin = 0;
+    _avgMax = 0;
   }
 
   /// <summary>受信のたびに呼び、平均中なら有効な風速を時間で重み付けして積算する</summary>
@@ -1310,6 +1366,11 @@ public partial class MainViewModel : ObservableObject
       _avgOverRange = true;
     }
 
+    // 最小・最大は読み取り値そのもの（約 0.2 秒ごと）から求める。気象の「最大瞬間風速」（3 秒平均の最大）とは別物
+    _avgMin = _avgHasSample ? Math.Min(_avgMin, v) : v;
+    _avgMax = _avgHasSample ? Math.Max(_avgMax, v) : v;
+    _avgHasSample = true;
+
     var now = DateTime.Now;
     if (_avgLastTime.HasValue)
     {
@@ -1328,6 +1389,19 @@ public partial class MainViewModel : ObservableObject
   private void UpdateAvgText()
   {
     var label = Resources.Strings.AvgLabel;
+    var minLabel = Resources.Strings.StatsMin;
+    var maxLabel = Resources.Strings.StatsMax;
+    if (AvgState == AverageState.Idle || !_avgHasSample)
+    {
+      // 集計前も最小・最大の行を出しておき、集計を始めてもカードの高さが変わらないようにする
+      AvgRangeText = $"{minLabel} ―　{maxLabel} ―";
+    }
+    else
+    {
+      // 上限を超えた値は 5.0 として扱っているので、最大はレンジオーバー表示にする
+      string max = _avgOverRange ? $">{VELOCITY_RANGE_MAX:F1}" : _avgMax.ToString("F2");
+      AvgRangeText = $"{minLabel} {_avgMin:F2}　{maxLabel} {max}";
+    }
     if (AvgState == AverageState.Idle)
     {
       AvgText = $"{label}  ―";

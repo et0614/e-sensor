@@ -402,9 +402,21 @@ namespace E_Sensor.Resources {
             }
         }
 
-        public static string AvgStart {
+        public static string StatsStart {
             get {
-                return ResourceManager.GetString("AvgStart", resourceCulture);
+                return ResourceManager.GetString("StatsStart", resourceCulture);
+            }
+        }
+
+        public static string StatsMin {
+            get {
+                return ResourceManager.GetString("StatsMin", resourceCulture);
+            }
+        }
+
+        public static string StatsMax {
+            get {
+                return ResourceManager.GetString("StatsMax", resourceCulture);
             }
         }
 

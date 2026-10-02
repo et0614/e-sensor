@@ -261,11 +261,11 @@
                                        CardHeightRequest="-1"
                                        CardPadding="20">
                     <viewmodels:SensorCard.ExtraContent>
-                        <!-- 平均化。瞬時値（上の大きな数字）の位置と大きさは状態によらず変えず、平均は補足として
-                             ここに表示する（大きさを入れ替えると瞬時値と平均値を取り違えるおそれがあるため）。
-                             ボタンは 1 つだけ：[平均開始] → 平均中 [停止] → 確定（次の平均開始まで表示し続ける） -->
-                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,10,0,0">
-                            <Label Grid.Column="0"
+                        <!-- 集計（平均・最小・最大）。瞬時値（上の大きな数字）の位置と大きさは状態によらず変えず、
+                             集計結果は補足としてここに表示する（大きさを入れ替えると瞬時値と取り違えるおそれがあるため）。
+                             ボタンは 1 つだけ：[集計開始] → 集計中 [停止] → 確定（次の集計開始まで表示し続ける） -->
+                        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="8" Margin="0,10,0,0">
+                            <Label Grid.Row="0" Grid.Column="0"
                                    Text="{Binding AvgText}"
                                    FontSize="15"
                                    FontAttributes="Bold"
@@ -281,8 +281,14 @@
                                     </DataTrigger>
                                 </Label.Triggers>
                             </Label>
-                            <HorizontalStackLayout Grid.Column="1" Spacing="6" VerticalOptions="Center">
-                                <Button Text="{x:Static res:Strings.AvgStart}"
+                            <!-- 最小・最大は平均より一段控えめに（小さく灰色で）添える -->
+                            <Label Grid.Row="1" Grid.Column="0"
+                                   Text="{Binding AvgRangeText}"
+                                   FontSize="13"
+                                   TextColor="#6B7682"
+                                   LineBreakMode="WordWrap" />
+                            <HorizontalStackLayout Grid.Row="0" Grid.RowSpan="2" Grid.Column="1" Spacing="6" VerticalOptions="Center">
+                                <Button Text="{x:Static res:Strings.StatsStart}"
                                         Command="{Binding StartAverageCommand}"
                                         IsVisible="{Binding IsAvgNotRunning}"
                                         Style="{StaticResource AvgPrimaryButtonStyle}" />
